@@ -169,7 +169,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
       result = result.filter((m) => m.throughput == null || m.throughput >= minThroughput);
     }
     return result;
-  }, [selectedProviders, minThroughput]);
+  }, [models, selectedProviders, minThroughput]);
 
   // Compute pareto frontier
   const paretoFrontier = useMemo(
