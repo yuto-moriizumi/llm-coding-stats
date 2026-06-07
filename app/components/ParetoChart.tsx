@@ -61,42 +61,72 @@ function formatPrice(price: number): string {
 interface CustomTooltipProps {
   active?: boolean;
   payload?: Array<{ payload: LLMModel }>;
+  allModels?: LLMModel[];
 }
 
-function CustomTooltip({ active, payload }: CustomTooltipProps) {
+function CustomTooltip({ active, payload, allModels }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
-  const model = payload[0].payload;
+
+  const hoveredModel = payload[0].payload;
+  const hoveredPrice = blendedPrice(hoveredModel);
+
+  // Find all models with the same blended price (within a small epsilon for float comparison)
+  const samePriceModels = allModels?.filter(
+    (m) => Math.abs(blendedPrice(m) - hoveredPrice) < 0.01
+  ) || [hoveredModel];
+
+  // Remove duplicates by name just in case
+  const uniqueModels = Array.from(
+    new Map(samePriceModels.map((m) => [m.name, m])).values()
+  );
 
   return (
     <div className="rounded-lg border border-white/10 bg-gray-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur-sm">
-      <div className="mb-1 font-medium text-gray-100">{model.name}</div>
-      <div className="flex flex-col gap-0.5 text-gray-400">
-        <span>
-          <span className="text-gray-300">Arena:</span> {model.arenaScore}
-        </span>
-        <span>
-          <span className="text-gray-300">Input:</span> ${model.inputPrice}/1M
-        </span>
-        <span>
-          <span className="text-gray-300">Output:</span> ${model.outputPrice}/1M
-        </span>
-        <span>
-          <span className="text-gray-300">Blended:</span> $
-          {blendedPrice(model).toFixed(2)}/1M
-        </span>
-        {model.throughput != null && (
-          <span>
-            <span className="text-gray-300">Throughput:</span>{" "}
-            {model.throughput} tok/s
-          </span>
-        )}
-        <span className="mt-0.5 flex items-center gap-1">
-          <span
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: PROVIDER_COLORS[model.provider] }}
-          />
-          {PROVIDER_LABELS[model.provider]}
-        </span>
+      <div className="mb-2 font-medium text-gray-100">
+        {uniqueModels.length > 1
+          ? `${uniqueModels.length} Models at Blended: `
+          : ""}
+        ${hoveredPrice.toFixed(2)}/1M
+      </div>
+      <div className="flex flex-col gap-2">
+        {uniqueModels.map((model, index) => (
+          <div
+            key={`${model.name}-${index}`}
+            className={
+              uniqueModels.length > 1
+                ? "border-t border-white/10 pt-2 first:border-0 first:pt-0"
+                : ""
+            }
+          >
+            <div className="mb-1 font-medium text-gray-100">{model.name}</div>
+            <div className="flex flex-col gap-0.5 text-gray-400">
+              <span>
+                <span className="text-gray-300">Arena:</span> {model.arenaScore}
+              </span>
+              <span>
+                <span className="text-gray-300">Input:</span> $
+                {model.inputPrice}/1M
+              </span>
+              <span>
+                <span className="text-gray-300">Output:</span> $
+                {model.outputPrice}/1M
+              </span>
+              {model.throughput != null && (
+                <span>
+                  <span className="text-gray-300">Throughput:</span>{" "}
+                  {model.throughput} tok/s
+                </span>
+              )}
+              <span className="mt-0.5 flex items-center gap-1">
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: PROVIDER_COLORS[model.provider] }}
+                />
+                {PROVIDER_LABELS[model.provider]}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -404,7 +434,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
               <ZAxis range={[1, 1]} />
 
               <Tooltip
-                content={<CustomTooltip />}
+                content={<CustomTooltip allModels={filteredModels} />}
                 cursor={{
                   strokeDasharray: "3,3",
                   stroke: "rgba(255,255,255,0.3)",
