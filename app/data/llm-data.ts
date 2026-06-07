@@ -21,6 +21,12 @@ export type Provider =
   | "ibm"
   | "xai"
   | "cohere"
+  | "zhipu"
+  | "moonshot"
+  | "tencent"
+  | "kwai"
+  | "arcee"
+  | "inception"
   | "other";
 
 export const PROVIDER_COLORS: Record<Provider, string> = {
@@ -36,6 +42,12 @@ export const PROVIDER_COLORS: Record<Provider, string> = {
   ibm: "#0f62fe",
   xai: "#1d9bf0",
   cohere: "#39594d",
+  zhipu: "#1a73e8",
+  moonshot: "#6366f1",
+  tencent: "#e60012",
+  kwai: "#ff6600",
+  arcee: "#c026d3",
+  inception: "#059669",
   other: "#6b7280",
 };
 
@@ -52,6 +64,12 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
   ibm: "IBM",
   xai: "xAI",
   cohere: "Cohere",
+  zhipu: "Zhipu AI",
+  moonshot: "Moonshot AI",
+  tencent: "Tencent",
+  kwai: "Kwai",
+  arcee: "Arcee AI",
+  inception: "Inception Labs",
   other: "Other",
 };
 
@@ -65,83 +83,120 @@ export function blendedPrice(model: LLMModel): number {
 
 export const LLM_MODELS: LLMModel[] = [
   // ── Anthropic ──────────────────────────────────────────────
-  { name: "claude-opus-4-7-thinking", provider: "anthropic", arenaScore: 1567, inputPrice: 15, outputPrice: 75 },
-  { name: "claude-opus-4-7", provider: "anthropic", arenaScore: 1558, inputPrice: 15, outputPrice: 75 },
-  { name: "claude-opus-4", provider: "anthropic", arenaScore: 1540, inputPrice: 15, outputPrice: 75 },
-  { name: "claude-sonnet-4", provider: "anthropic", arenaScore: 1510, inputPrice: 3, outputPrice: 15 },
-  { name: "claude-sonnet-3.7", provider: "anthropic", arenaScore: 1490, inputPrice: 3, outputPrice: 15 },
-  { name: "claude-3.5-sonnet", provider: "anthropic", arenaScore: 1442, inputPrice: 3, outputPrice: 15 },
-  { name: "claude-3.5-haiku", provider: "anthropic", arenaScore: 1350, inputPrice: 0.8, outputPrice: 4 },
-  { name: "claude-3-opus", provider: "anthropic", arenaScore: 1410, inputPrice: 15, outputPrice: 75 },
+  { name: "claude-opus-4-7-thinking", provider: "anthropic", arenaScore: 1567, inputPrice: 5, outputPrice: 25 },
+  { name: "claude-opus-4-7", provider: "anthropic", arenaScore: 1557, inputPrice: 5, outputPrice: 25 },
+  { name: "claude-opus-4-8-thinking", provider: "anthropic", arenaScore: 1552, inputPrice: 5, outputPrice: 25 },
+  { name: "claude-opus-4-8", provider: "anthropic", arenaScore: 1545, inputPrice: 5, outputPrice: 25 },
+  { name: "claude-opus-4-6-thinking", provider: "anthropic", arenaScore: 1543, inputPrice: 5, outputPrice: 25 },
+  { name: "claude-opus-4-6", provider: "anthropic", arenaScore: 1538, inputPrice: 5, outputPrice: 25 },
+  { name: "claude-sonnet-4-6", provider: "anthropic", arenaScore: 1522, inputPrice: 3, outputPrice: 15 },
+  { name: "claude-opus-4-5-thinking", provider: "anthropic", arenaScore: 1491, inputPrice: 5, outputPrice: 25 },
+  { name: "claude-opus-4-5", provider: "anthropic", arenaScore: 1467, inputPrice: 5, outputPrice: 25 },
+  { name: "claude-sonnet-4-5-thinking", provider: "anthropic", arenaScore: 1388, inputPrice: 3, outputPrice: 15 },
+  { name: "claude-opus-4-1", provider: "anthropic", arenaScore: 1386, inputPrice: 15, outputPrice: 75 },
+  { name: "claude-sonnet-4-5", provider: "anthropic", arenaScore: 1386, inputPrice: 3, outputPrice: 15 },
+  { name: "claude-haiku-4-5", provider: "anthropic", arenaScore: 1324, inputPrice: 1, outputPrice: 5 },
 
   // ── OpenAI ─────────────────────────────────────────────────
-  { name: "o3-pro", provider: "openai", arenaScore: 1555, inputPrice: 20, outputPrice: 80 },
-  { name: "o3", provider: "openai", arenaScore: 1535, inputPrice: 10, outputPrice: 40 },
-  { name: "o3-thinking", provider: "openai", arenaScore: 1545, inputPrice: 10, outputPrice: 40 },
-  { name: "gpt-4.5-preview", provider: "openai", arenaScore: 1498, inputPrice: 75, outputPrice: 150 },
-  { name: "o4-mini", provider: "openai", arenaScore: 1480, inputPrice: 1.1, outputPrice: 4.4 },
-  { name: "gpt-4o", provider: "openai", arenaScore: 1438, inputPrice: 2.5, outputPrice: 10 },
-  { name: "gpt-4o-mini", provider: "openai", arenaScore: 1350, inputPrice: 0.15, outputPrice: 0.6 },
-  { name: "o1", provider: "openai", arenaScore: 1510, inputPrice: 15, outputPrice: 60 },
-  { name: "o1-mini", provider: "openai", arenaScore: 1415, inputPrice: 1.1, outputPrice: 4.4 },
-  { name: "gpt-4-turbo", provider: "openai", arenaScore: 1400, inputPrice: 10, outputPrice: 30 },
+  { name: "gpt-5.5-xhigh", provider: "openai", arenaScore: 1502, inputPrice: 0, outputPrice: 0 },
+  { name: "gpt-5.5-high", provider: "openai", arenaScore: 1482, inputPrice: 0, outputPrice: 0 },
+  { name: "gpt-5.4-high", provider: "openai", arenaScore: 1457, inputPrice: 2.5, outputPrice: 15 },
+  { name: "gpt-5.5", provider: "openai", arenaScore: 1448, inputPrice: 0, outputPrice: 0 },
+  { name: "gpt-5.4-medium", provider: "openai", arenaScore: 1437, inputPrice: 2.5, outputPrice: 15 },
+  { name: "gpt-5.3-codex-h", provider: "openai", arenaScore: 1407, inputPrice: 1.75, outputPrice: 14 },
+  { name: "gpt-5.2", provider: "openai", arenaScore: 1405, inputPrice: 1.75, outputPrice: 14 },
+  { name: "gpt-5.4-mini-high", provider: "openai", arenaScore: 1398, inputPrice: 0.75, outputPrice: 4.5 },
+  { name: "gpt-5-medium", provider: "openai", arenaScore: 1394, inputPrice: 1.25, outputPrice: 10 },
+  { name: "gpt-5.1-medium", provider: "openai", arenaScore: 1391, inputPrice: 1.25, outputPrice: 10 },
+  { name: "gpt-5.4", provider: "openai", arenaScore: 1391, inputPrice: 2.5, outputPrice: 15 },
+  { name: "gpt-5.3-codex-m", provider: "openai", arenaScore: 1373, inputPrice: 1.75, outputPrice: 14 },
+  { name: "gpt-5.1", provider: "openai", arenaScore: 1340, inputPrice: 1.25, outputPrice: 10 },
+  { name: "gpt-5.2-codex", provider: "openai", arenaScore: 1335, inputPrice: 1.75, outputPrice: 14 },
+  { name: "gpt-5.1-codex", provider: "openai", arenaScore: 1330, inputPrice: 1.25, outputPrice: 10 },
+  { name: "gpt-5.1-codex-mini", provider: "openai", arenaScore: 1240, inputPrice: 0.25, outputPrice: 2 },
 
   // ── Google ─────────────────────────────────────────────────
-  { name: "gemini-2.5-pro", provider: "google", arenaScore: 1548, inputPrice: 1.25, outputPrice: 10 },
-  { name: "gemini-2.5-flash", provider: "google", arenaScore: 1470, inputPrice: 0.15, outputPrice: 0.6 },
-  { name: "gemini-2.0-flash", provider: "google", arenaScore: 1408, inputPrice: 0.1, outputPrice: 0.4 },
-  { name: "gemini-2.0-flash-lite", provider: "google", arenaScore: 1340, inputPrice: 0.075, outputPrice: 0.3 },
-  { name: "gemini-1.5-pro", provider: "google", arenaScore: 1390, inputPrice: 1.25, outputPrice: 5 },
-  { name: "gemini-1.5-flash", provider: "google", arenaScore: 1330, inputPrice: 0.075, outputPrice: 0.3 },
+  { name: "gemini-3.5-flash", provider: "google", arenaScore: 1506, inputPrice: 1.5, outputPrice: 9 },
+  { name: "gemini-3.1-pro", provider: "google", arenaScore: 1447, inputPrice: 2, outputPrice: 12 },
+  { name: "gemini-3-pro", provider: "google", arenaScore: 1439, inputPrice: 2, outputPrice: 12 },
+  { name: "gemini-3-flash", provider: "google", arenaScore: 1437, inputPrice: 0.5, outputPrice: 3 },
+  { name: "gemini-3-flash-thinking", provider: "google", arenaScore: 1388, inputPrice: 0.5, outputPrice: 3 },
+  { name: "gemma-4-31b", provider: "google", arenaScore: 1377, inputPrice: 0.14, outputPrice: 0.4 },
+  { name: "gemma-4-26b-a4b", provider: "google", arenaScore: 1360, inputPrice: 0, outputPrice: 0 },
+  { name: "gemini-3.1-flash-lite", provider: "google", arenaScore: 1249, inputPrice: 0.25, outputPrice: 1.5 },
+  { name: "gemini-2.5-pro", provider: "google", arenaScore: 1204, inputPrice: 1.25, outputPrice: 10 },
 
-  // ── Meta (Llama) ───────────────────────────────────────────
-  { name: "llama-4-maverick", provider: "meta", arenaScore: 1475, inputPrice: 0.2, outputPrice: 0.6 },
-  { name: "llama-4-scout", provider: "meta", arenaScore: 1430, inputPrice: 0.1, outputPrice: 0.3 },
-  { name: "llama-3.3-70b", provider: "meta", arenaScore: 1385, inputPrice: 0.2, outputPrice: 0.6 },
-  { name: "llama-3.1-405b", provider: "meta", arenaScore: 1420, inputPrice: 3, outputPrice: 3 },
-  { name: "llama-3.1-70b", provider: "meta", arenaScore: 1350, inputPrice: 0.35, outputPrice: 0.4 },
-  { name: "llama-3.1-8b", provider: "meta", arenaScore: 1240, inputPrice: 0.05, outputPrice: 0.08 },
+  // ── Zhipu AI (GLM) ────────────────────────────────────────
+  { name: "glm-5.1", provider: "zhipu", arenaScore: 1532, inputPrice: 1.4, outputPrice: 4.4 },
+  { name: "glm-4.7", provider: "zhipu", arenaScore: 1440, inputPrice: 0.4, outputPrice: 1.75 },
+  { name: "glm-4.6", provider: "zhipu", arenaScore: 1355, inputPrice: 0.43, outputPrice: 1.74 },
 
-  // ── Alibaba (Qwen) ─────────────────────────────────────────
-  { name: "qwen3.7-max", provider: "alibaba", arenaScore: 1537, inputPrice: 2, outputPrice: 8 },
-  { name: "qwen3-max", provider: "alibaba", arenaScore: 1505, inputPrice: 1.2, outputPrice: 6 },
-  { name: "qwen3-235b-a22b", provider: "alibaba", arenaScore: 1445, inputPrice: 0.35, outputPrice: 1.4 },
-  { name: "qwen3-32b", provider: "alibaba", arenaScore: 1398, inputPrice: 0.12, outputPrice: 0.48 },
-  { name: "qwen3-30b-a3b", provider: "alibaba", arenaScore: 1370, inputPrice: 0.08, outputPrice: 0.32 },
-  { name: "qwen2.5-72b", provider: "alibaba", arenaScore: 1360, inputPrice: 0.35, outputPrice: 0.4 },
-  { name: "qwen2.5-coder-32b", provider: "alibaba", arenaScore: 1330, inputPrice: 0.12, outputPrice: 0.48 },
+  // ── Moonshot AI (Kimi) ─────────────────────────────────────
+  { name: "kimi-k2.6", provider: "moonshot", arenaScore: 1516, inputPrice: 0.95, outputPrice: 4 },
+  { name: "kimi-k2.5-thinking", provider: "moonshot", arenaScore: 1431, inputPrice: 0.6, outputPrice: 3 },
+  { name: "kimi-k2.5-instant", provider: "moonshot", arenaScore: 1408, inputPrice: 0.4, outputPrice: 1.9 },
+  { name: "kimi-k2-thinking-turbo", provider: "moonshot", arenaScore: 1330, inputPrice: 1.15, outputPrice: 8 },
 
-  // ── Mistral ────────────────────────────────────────────────
-  { name: "mistral-large-2", provider: "mistral", arenaScore: 1432, inputPrice: 2, outputPrice: 6 },
-  { name: "mistral-medium", provider: "mistral", arenaScore: 1375, inputPrice: 2.7, outputPrice: 8.1 },
-  { name: "mixtral-8x22b", provider: "mistral", arenaScore: 1355, inputPrice: 0.9, outputPrice: 0.9 },
-  { name: "mistral-small", provider: "mistral", arenaScore: 1310, inputPrice: 0.2, outputPrice: 0.6 },
-  { name: "mixtral-8x7b", provider: "mistral", arenaScore: 1275, inputPrice: 0.24, outputPrice: 0.24 },
-
-  // ── DeepSeek ───────────────────────────────────────────────
-  { name: "deepseek-r1", provider: "deepseek", arenaScore: 1495, inputPrice: 0.55, outputPrice: 2.19 },
-  { name: "deepseek-v3", provider: "deepseek", arenaScore: 1458, inputPrice: 0.27, outputPrice: 1.1 },
-  { name: "deepseek-v2.5", provider: "deepseek", arenaScore: 1380, inputPrice: 0.14, outputPrice: 0.28 },
+  // ── Meta ───────────────────────────────────────────────────
+  { name: "muse-spark", provider: "meta", arenaScore: 1508, inputPrice: 0, outputPrice: 0 },
 
   // ── MiniMax ────────────────────────────────────────────────
-  { name: "minimax-m3", provider: "minimax", arenaScore: 1528, inputPrice: 1.5, outputPrice: 6 },
-  { name: "minimax-01", provider: "minimax", arenaScore: 1420, inputPrice: 0.4, outputPrice: 1.6 },
+  { name: "minimax-m3", provider: "minimax", arenaScore: 1528, inputPrice: 0.6, outputPrice: 2.4 },
+  { name: "minimax-m2.7", provider: "minimax", arenaScore: 1395, inputPrice: 0.28, outputPrice: 1.2 },
+  { name: "minimax-m2.1-preview", provider: "minimax", arenaScore: 1392, inputPrice: 0.29, outputPrice: 0.95 },
+  { name: "minimax-m2.5", provider: "minimax", arenaScore: 1382, inputPrice: 0.15, outputPrice: 1.15 },
+  { name: "minimax-m2", provider: "minimax", arenaScore: 1305, inputPrice: 0.26, outputPrice: 1 },
+
+  // ── Alibaba (Qwen) ─────────────────────────────────────────
+  { name: "qwen3.7-max", provider: "alibaba", arenaScore: 1537, inputPrice: 1.25, outputPrice: 3.75 },
+  { name: "qwen3.6-max-preview", provider: "alibaba", arenaScore: 1484, inputPrice: 1.04, outputPrice: 6.24 },
+  { name: "qwen3.6-plus", provider: "alibaba", arenaScore: 1463, inputPrice: 0.33, outputPrice: 1.95 },
+  { name: "qwen3.5-397b-a17b", provider: "alibaba", arenaScore: 1394, inputPrice: 0.39, outputPrice: 2.34 },
+  { name: "qwen3.5-122b-a10b", provider: "alibaba", arenaScore: 1365, inputPrice: 0.26, outputPrice: 2.08 },
+  { name: "qwen3.5-27b", provider: "alibaba", arenaScore: 1357, inputPrice: 0.2, outputPrice: 1.56 },
+  { name: "qwen3-coder-480b", provider: "alibaba", arenaScore: 1282, inputPrice: 0.4, outputPrice: 1.6 },
+  { name: "qwen3.5-35b-a3b", provider: "alibaba", arenaScore: 1250, inputPrice: 0.14, outputPrice: 1 },
+  { name: "qwen3.5-flash", provider: "alibaba", arenaScore: 1238, inputPrice: 0, outputPrice: 0 },
 
   // ── Xiaomi (MiMo) ─────────────────────────────────────────
-  { name: "mimo-v2.5-pro", provider: "xiaomi", arenaScore: 1466, inputPrice: 0.55, outputPrice: 2.2 },
-  { name: "mimo-v2.5", provider: "xiaomi", arenaScore: 1437, inputPrice: 0.18, outputPrice: 0.7 },
-  { name: "mimo-v2", provider: "xiaomi", arenaScore: 1380, inputPrice: 0.1, outputPrice: 0.4 },
+  { name: "mimo-v2.5-pro", provider: "xiaomi", arenaScore: 1466, inputPrice: 0.43, outputPrice: 0.87 },
+  { name: "mimo-v2.5", provider: "xiaomi", arenaScore: 1436, inputPrice: 0.14, outputPrice: 0.28 },
+  { name: "mimo-v2-pro", provider: "xiaomi", arenaScore: 1433, inputPrice: 1, outputPrice: 3 },
+  { name: "mimo-v2-flash", provider: "xiaomi", arenaScore: 1337, inputPrice: 0.1, outputPrice: 0.3 },
+  { name: "mimo-v2-flash-thinking", provider: "xiaomi", arenaScore: 1301, inputPrice: 0.1, outputPrice: 0.3 },
+
+  // ── DeepSeek ───────────────────────────────────────────────
+  { name: "deepseek-v4-pro-thinking", provider: "deepseek", arenaScore: 1461, inputPrice: 0.43, outputPrice: 0.87 },
+  { name: "deepseek-v3.2-thinking", provider: "deepseek", arenaScore: 1368, inputPrice: 0.23, outputPrice: 0.34 },
+  { name: "deepseek-v3.2", provider: "deepseek", arenaScore: 1332, inputPrice: 0.23, outputPrice: 0.34 },
+  { name: "deepseek-v3.2-exp", provider: "deepseek", arenaScore: 1287, inputPrice: 0.27, outputPrice: 0.41 },
+
+  // ── xAI (Grok) ────────────────────────────────────────────
+  { name: "grok-4.20-beta", provider: "xai", arenaScore: 1393, inputPrice: 2, outputPrice: 6 },
+  { name: "grok-4.3", provider: "xai", arenaScore: 1371, inputPrice: 1.25, outputPrice: 2.5 },
+  { name: "grok-4-1-fast", provider: "xai", arenaScore: 1234, inputPrice: 0.2, outputPrice: 0.5 },
+  { name: "grok-4.1-thinking", provider: "xai", arenaScore: 1209, inputPrice: 0, outputPrice: 0 },
+  { name: "grok-4-fast", provider: "xai", arenaScore: 1150, inputPrice: 0.2, outputPrice: 0.5 },
+  { name: "grok-code-fast-1", provider: "xai", arenaScore: 1140, inputPrice: 0.2, outputPrice: 1.5 },
+
+  // ── Mistral ────────────────────────────────────────────────
+  { name: "mistral-medium-3.5", provider: "mistral", arenaScore: 1269, inputPrice: 1.5, outputPrice: 7.5 },
+  { name: "mistral-large-3", provider: "mistral", arenaScore: 1223, inputPrice: 0.5, outputPrice: 1.5 },
+  { name: "devstral-2", provider: "mistral", arenaScore: 1199, inputPrice: 0, outputPrice: 0 },
+  { name: "devstral-medium", provider: "mistral", arenaScore: 1092, inputPrice: 0.4, outputPrice: 2 },
+
+  // ── Tencent ────────────────────────────────────────────────
+  { name: "hunyuan-hy3-preview", provider: "tencent", arenaScore: 1364, inputPrice: 0, outputPrice: 0 },
+
+  // ── Kwai ───────────────────────────────────────────────────
+  { name: "KAT-Coder-Pro-V1", provider: "kwai", arenaScore: 1259, inputPrice: 0.21, outputPrice: 0.83 },
 
   // ── IBM ────────────────────────────────────────────────────
-  { name: "granite-4.1-8b", provider: "ibm", arenaScore: 1201, inputPrice: 0.05, outputPrice: 0.2 },
-  { name: "granite-3.3-8b", provider: "ibm", arenaScore: 1180, inputPrice: 0.05, outputPrice: 0.2 },
+  { name: "granite-4.1-8b", provider: "ibm", arenaScore: 1201, inputPrice: 0.05, outputPrice: 0.1 },
 
-  // ── xAI ────────────────────────────────────────────────────
-  { name: "grok-3", provider: "xai", arenaScore: 1500, inputPrice: 3, outputPrice: 15 },
-  { name: "grok-3-mini", provider: "xai", arenaScore: 1430, inputPrice: 0.3, outputPrice: 1.5 },
+  // ── Arcee AI ───────────────────────────────────────────────
+  { name: "trinity-large-thinking", provider: "arcee", arenaScore: 1245, inputPrice: 0.22, outputPrice: 0.85 },
 
-  // ── Cohere ─────────────────────────────────────────────────
-  { name: "command-a", provider: "cohere", arenaScore: 1415, inputPrice: 2.5, outputPrice: 10 },
-  { name: "command-r-plus", provider: "cohere", arenaScore: 1340, inputPrice: 2.5, outputPrice: 10 },
-  { name: "command-r", provider: "cohere", arenaScore: 1290, inputPrice: 0.15, outputPrice: 0.6 },
+  // ── Inception Labs ─────────────────────────────────────────
+  { name: "mercury-2", provider: "inception", arenaScore: 1165, inputPrice: 0.25, outputPrice: 0.75 },
 ];

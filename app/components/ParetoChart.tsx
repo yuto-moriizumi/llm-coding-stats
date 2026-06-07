@@ -7,7 +7,7 @@ import { LLM_MODELS, PROVIDER_COLORS, PROVIDER_LABELS, blendedPrice, type LLMMod
 const MARGIN = { top: 30, right: 20, bottom: 50, left: 90 };
 
 // ── Axis config ──────────────────────────────────────────────
-const SCORE_MIN = 1100;
+const SCORE_MIN = 1050;
 const SCORE_MAX = 1600;
 const PRICE_TICKS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
 
@@ -78,8 +78,10 @@ export default function ParetoChart() {
   const svgHeight = innerHeight + MARGIN.top + MARGIN.bottom;
 
   const filteredModels = useMemo(() => {
-    if (selectedProviders.size === 0) return LLM_MODELS;
-    return LLM_MODELS.filter((m) => selectedProviders.has(m.provider));
+    // Exclude models with $0 price (cannot plot on log scale)
+    const priced = LLM_MODELS.filter((m) => m.inputPrice > 0 || m.outputPrice > 0);
+    const base = selectedProviders.size === 0 ? priced : priced.filter((m) => selectedProviders.has(m.provider));
+    return base;
   }, [selectedProviders]);
 
   const paretoFrontier = useMemo(() => computeParetoFrontier(filteredModels), [filteredModels]);
