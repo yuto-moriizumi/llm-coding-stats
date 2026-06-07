@@ -23,7 +23,6 @@ import {
 
 // ── Axis config ──────────────────────────────────────────────
 const PRICE_MIN = 0.05;
-const PRICE_MAX = 50;
 const SCORE_MIN = 1050;
 const SCORE_MAX = 1600;
 const PRICE_TICKS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
@@ -130,6 +129,7 @@ export default function ParetoChart() {
   const [selectedProviders, setSelectedProviders] = useState<Set<Provider>>(
     new Set(),
   );
+  const [minThroughput, setMinThroughput] = useState<number>(0);
 
   // Track container size with ResizeObserver
   useEffect(() => {
@@ -149,14 +149,17 @@ export default function ParetoChart() {
     return () => observer.disconnect();
   }, []);
 
-  // Filter models by selected providers (exclude $0 price models for log scale)
+  // Filter models by selected providers and minimum throughput (exclude $0 price models for log scale)
   const filteredModels = useMemo(() => {
     const priced = LLM_MODELS.filter(
       (m) => m.inputPrice > 0 || m.outputPrice > 0,
     );
-    if (selectedProviders.size === 0) return priced;
-    return priced.filter((m) => selectedProviders.has(m.provider));
-  }, [selectedProviders]);
+    let result = selectedProviders.size === 0 ? priced : priced.filter((m) => selectedProviders.has(m.provider));
+    if (minThroughput > 0) {
+      result = result.filter((m) => (m.throughput ?? 0) >= minThroughput);
+    }
+    return result;
+  }, [selectedProviders, minThroughput]);
 
   // Compute pareto frontier
   const paretoFrontier = useMemo(
@@ -186,12 +189,36 @@ export default function ParetoChart() {
     [paretoFrontier],
   );
 
+  // Auto-compute price axis max from filtered data (with 30% margin,
+  // snapped to the next available tick value)
+  const priceMax = useMemo(() => {
+    if (filteredModels.length === 0)
+      return PRICE_TICKS[PRICE_TICKS.length - 1];
+    const maxPrice = Math.max(...filteredModels.map(blendedPrice));
+    const target = maxPrice * 1.1;
+    return (
+      PRICE_TICKS.find((t) => t >= target) ??
+      PRICE_TICKS[PRICE_TICKS.length - 1]
+    );
+  }, [filteredModels]);
+
   // Get all providers
   const providers = useMemo(() => {
     const set = new Set<Provider>();
     LLM_MODELS.forEach((m) => set.add(m.provider));
     return Array.from(set).sort();
   }, []);
+
+  // Compute throughput range from all models
+  const throughputRange = useMemo(() => {
+    const values = LLM_MODELS.map((m) => m.throughput).filter(
+      (t): t is number => t != null && t > 0,
+    );
+    return { min: Math.min(...values), max: Math.max(...values) };
+  }, []);
+
+  // Preset throughput thresholds
+  const THROUGHPUT_PRESETS = [0, 30, 50, 100, 150];
 
   const toggleProvider = (provider: Provider) => {
     setSelectedProviders((prev) => {
@@ -304,8 +331,8 @@ export default function ParetoChart() {
                 type="number"
                 dataKey="x"
                 scale="log"
-                domain={[PRICE_MIN, PRICE_MAX]}
-                ticks={PRICE_TICKS}
+                domain={[PRICE_MIN, priceMax]}
+                ticks={PRICE_TICKS.filter((t) => t <= priceMax)}
                 tickFormatter={formatPrice}
                 tick={{ fill: "#eeeef0", fontSize: 11 }}
                 stroke="rgba(255,255,255,0.2)"
