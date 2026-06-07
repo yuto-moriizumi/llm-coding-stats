@@ -80,6 +80,12 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
           <span className="text-gray-300">Blended:</span> $
           {blendedPrice(model).toFixed(2)}/1M
         </span>
+        {model.throughput != null && (
+          <span>
+            <span className="text-gray-300">Throughput:</span>{" "}
+            {model.throughput} tok/s
+          </span>
+        )}
         <span className="mt-0.5 flex items-center gap-1">
           <span
             className="inline-block h-1.5 w-1.5 rounded-full"
@@ -262,17 +268,6 @@ export default function ParetoChart() {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col p-2 sm:p-6">
-      {/* Header */}
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <h3 className="text-base font-medium text-gray-100">
-            Pareto Frontier
-          </h3>
-          <p className="hidden text-xs text-gray-400 sm:block">
-            Model performance at each price point
-          </p>
-        </div>
-      </div>
 
       {/* Provider filter chips */}
       <div className="mb-3 flex flex-wrap gap-1.5">
@@ -311,6 +306,46 @@ export default function ParetoChart() {
           >
             Clear
           </button>
+        )}
+      </div>
+
+      {/* Throughput filter */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-medium text-gray-400">
+          Min Throughput:
+        </span>
+        <div className="flex flex-wrap gap-1">
+          {THROUGHPUT_PRESETS.map((value) => {
+            const active = minThroughput === value;
+            return (
+              <button
+                key={value}
+                onClick={() => setMinThroughput(value)}
+                className={`rounded-md border px-2 py-0.5 text-[11px] transition-colors ${
+                  active
+                    ? "border-blue-500/60 bg-blue-500/20 text-blue-400"
+                    : "border-white/10 text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                {value === 0 ? "All" : `${value}+`}
+              </button>
+            );
+          })}
+        </div>
+        <input
+          type="range"
+          min={throughputRange.min}
+          max={throughputRange.max}
+          step={1}
+          value={minThroughput || throughputRange.min}
+          onChange={(e) => setMinThroughput(Number(e.target.value))}
+          className="h-1 w-24 cursor-pointer accent-blue-500 sm:w-32"
+          title={`Min throughput: ${minThroughput} tok/s`}
+        />
+        {minThroughput > 0 && (
+          <span className="text-[11px] text-gray-500">
+            ≥{minThroughput} tok/s
+          </span>
         )}
       </div>
 
