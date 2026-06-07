@@ -23,7 +23,7 @@ import {
 
 // ── Axis config ──────────────────────────────────────────────
 const PRICE_MIN = 0.05;
-const PRICE_MAX = 100;
+const PRICE_MAX = 50;
 const SCORE_MIN = 1050;
 const SCORE_MAX = 1600;
 const PRICE_TICKS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
@@ -181,6 +181,7 @@ export default function ParetoChart() {
       paretoFrontier.map((model) => ({
         x: blendedPrice(model),
         y: model.arenaScore,
+        ...model,
       })),
     [paretoFrontier],
   );
