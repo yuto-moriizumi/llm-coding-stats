@@ -5,14 +5,12 @@ export default function Home() {
     <div className="flex min-h-screen flex-col bg-[#0a0a0a]">
       {/* Header */}
       <header className="border-b border-white/5 px-6 py-4">
-        <div className="mx-auto max-w-6xl">
-          <h1 className="text-lg font-semibold text-gray-100">
-            LLM Performance Stats
-          </h1>
-          <p className="text-sm text-gray-500">
-            Performance vs cost comparison across major LLM providers
-          </p>
-        </div>
+        <h1 className="text-lg font-semibold text-gray-100">
+          LLM Performance Stats
+        </h1>
+        <p className="text-sm text-gray-500">
+          Performance vs cost comparison across major LLM providers
+        </p>
       </header>
 
       {/* Main chart */}
