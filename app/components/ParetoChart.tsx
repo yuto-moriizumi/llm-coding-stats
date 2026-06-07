@@ -430,7 +430,7 @@ export default function ParetoChart() {
                         cx={cx}
                         cy={cy}
                         r={5}
-                        fill={PROVIDER_COLORS[payload.provider]}
+                        fill={PROVIDER_COLORS[payload.provider as Provider]}
                         strokeWidth={0}
                       />
                     );
