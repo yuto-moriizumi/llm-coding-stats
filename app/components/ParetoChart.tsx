@@ -310,7 +310,7 @@ export default function ParetoChart() {
       </div>
 
       {/* Throughput filter */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
         <span className="text-[11px] font-medium text-gray-400">
           Min Throughput:
         </span>
@@ -339,7 +339,7 @@ export default function ParetoChart() {
           step={1}
           value={minThroughput || throughputRange.min}
           onChange={(e) => setMinThroughput(Number(e.target.value))}
-          className="h-1 w-24 cursor-pointer accent-blue-500 sm:w-32"
+          className="throughput-slider h-1.5 w-48 cursor-pointer accent-blue-500 sm:w-64 lg:w-80"
           title={`Min throughput: ${minThroughput} tok/s`}
         />
         {minThroughput > 0 && (
