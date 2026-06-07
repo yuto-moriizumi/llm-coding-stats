@@ -162,7 +162,7 @@ export default function ParetoChart() {
     );
     let result = selectedProviders.size === 0 ? priced : priced.filter((m) => selectedProviders.has(m.provider));
     if (minThroughput > 0) {
-      result = result.filter((m) => (m.throughput ?? 0) >= minThroughput);
+      result = result.filter((m) => m.throughput == null || m.throughput >= minThroughput);
     }
     return result;
   }, [selectedProviders, minThroughput]);
