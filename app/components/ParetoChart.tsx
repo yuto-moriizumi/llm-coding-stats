@@ -422,7 +422,19 @@ export default function ParetoChart() {
                   data={paretoData}
                   stroke="#40b841"
                   strokeWidth={2.5}
-                  dot={{ fill: "#40b841", r: 5, strokeWidth: 0 }}
+                  dot={(props) => {
+                    const { cx, cy, payload } = props;
+                    if (cx == null || cy == null || !payload?.provider) return null;
+                    return (
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={5}
+                        fill={PROVIDER_COLORS[payload.provider]}
+                        strokeWidth={0}
+                      />
+                    );
+                  }}
                   isAnimationActive={false}
                 />
               )}
