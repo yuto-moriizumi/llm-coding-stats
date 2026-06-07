@@ -338,7 +338,6 @@ export default function ParetoChart() {
 
               <Tooltip
                 content={<CustomTooltip />}
-                active={hoveredModel !== null}
                 cursor={{
                   strokeDasharray: "3,3",
                   stroke: "rgba(255,255,255,0.3)",
