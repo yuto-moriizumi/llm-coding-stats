@@ -13,13 +13,17 @@ import {
   ZAxis,
 } from "recharts";
 import {
-  LLM_MODELS,
   PROVIDER_COLORS,
   PROVIDER_LABELS,
   blendedPrice,
   type LLMModel,
   type Provider,
 } from "../data/llm-data";
+
+// ── Props ────────────────────────────────────────────────────
+interface ParetoChartProps {
+  models: LLMModel[];
+}
 
 // ── Axis config ──────────────────────────────────────────────
 const PRICE_MIN = 0.05;
@@ -128,7 +132,7 @@ function CustomDot({ cx, cy, payload, hoveredModel, onMouseEnter, onMouseLeave }
 
 // ── Pareto extension lines are now handled by extending paretoData ──
 
-export default function ParetoChart() {
+export default function ParetoChart({ models }: ParetoChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [hoveredModel, setHoveredModel] = useState<LLMModel | null>(null);
@@ -157,7 +161,7 @@ export default function ParetoChart() {
 
   // Filter models by selected providers and minimum throughput (exclude $0 price models for log scale)
   const filteredModels = useMemo(() => {
-    const priced = LLM_MODELS.filter(
+    const priced = models.filter(
       (m) => m.inputPrice > 0 || m.outputPrice > 0,
     );
     let result = selectedProviders.size === 0 ? priced : priced.filter((m) => selectedProviders.has(m.provider));
@@ -211,17 +215,17 @@ export default function ParetoChart() {
   // Get all providers
   const providers = useMemo(() => {
     const set = new Set<Provider>();
-    LLM_MODELS.forEach((m) => set.add(m.provider));
+    models.forEach((m) => set.add(m.provider));
     return Array.from(set).sort();
-  }, []);
+  }, [models]);
 
   // Compute throughput range from all models
   const throughputRange = useMemo(() => {
-    const values = LLM_MODELS.map((m) => m.throughput).filter(
+    const values = models.map((m) => m.throughput).filter(
       (t): t is number => t != null && t > 0,
     );
     return { min: Math.min(...values), max: Math.max(...values) };
-  }, []);
+  }, [models]);
 
   // Preset throughput thresholds
   const THROUGHPUT_PRESETS = [0, 30, 50, 100, 150];
