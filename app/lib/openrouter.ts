@@ -76,9 +76,9 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "gemini-2.5-pro": "google/gemini-2.5-pro",
 
   // ── Zhipu AI ──────────────────────────────────────────────
-  "glm-5.1": "zhipu/glm-5.1",
-  "glm-4.7": "zhipu/glm-4.7",
-  "glm-4.6": "zhipu/glm-4.6",
+  "glm-5.1": "z-ai/glm-5.1",
+  "glm-4.7": "z-ai/glm-4.7",
+  "glm-4.6": "z-ai/glm-4.6",
 
   // ── Moonshot AI ────────────────────────────────────────────
   "kimi-k2.6": "moonshotai/kimi-k2.6",
