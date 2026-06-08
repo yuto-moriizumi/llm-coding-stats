@@ -116,7 +116,7 @@ export const LLM_MODELS: LLMModel[] = [
   { name: "gpt-5.3-codex-m", provider: "openai", arenaScore: 1373, inputPrice: 1.75, outputPrice: 14 },
   { name: "gpt-5.1", provider: "openai", arenaScore: 1340, inputPrice: 1.25, outputPrice: 10, deprecated: true },
   { name: "gpt-5.2-codex", provider: "openai", arenaScore: 1335, inputPrice: 1.75, outputPrice: 14 },
-  { name: "gpt-5.1-codex", provider: "openai", arenaScore: 1330, inputPrice: 1.25, outputPrice: 10 },
+  { name: "gpt-5.1-codex", provider: "openai", arenaScore: 1330, inputPrice: 1.25, outputPrice: 10, deprecated: true },
   { name: "gpt-5.1-codex-mini", provider: "openai", arenaScore: 1240, inputPrice: 0.25, outputPrice: 2 },
 
   // ── Google ─────────────────────────────────────────────────
