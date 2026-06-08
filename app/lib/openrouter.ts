@@ -32,8 +32,8 @@ interface OpenRouterResponse {
  */
 const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   // ─ Anthropic ──────────────────────────────────────────────
-  "claude-opus-4-7-thinking": "anthropic/claude-opus-4.7",
-  "claude-opus-4-7": "anthropic/claude-opus-4.7",
+  "claude-opus-4-7-thinking": "anthropic/claude-opus-4.7-fast",
+  "claude-opus-4-7": "anthropic/claude-opus-4.7-fast",
   "claude-opus-4-8-thinking": "anthropic/claude-opus-4.8",
   "claude-opus-4-8": "anthropic/claude-opus-4.8",
   "claude-opus-4-6-thinking": "anthropic/claude-opus-4.6",
@@ -66,12 +66,12 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
 
   // ── Google ─────────────────────────────────────────────────
   "gemini-3.5-flash": "google/gemini-3.5-flash",
-  "gemini-3.1-pro": "google/gemini-3.1-pro",
+  "gemini-3.1-pro": "google/gemini-3.1-pro-preview",
   "gemini-3-pro": "google/gemini-3-pro",
   "gemini-3-flash": "google/gemini-3-flash-preview",
   "gemini-3-flash-thinking": "google/gemini-3-flash-preview",
-  "gemma-4-31b": "google/gemma-4",
-  "gemma-4-26b-a4b": "google/gemma-4",
+  "gemma-4-31b": "google/gemma-4-31b-it",
+  "gemma-4-26b-a4b": "google/gemma-4-26b-a4b-it",
   "gemini-3.1-flash-lite": "google/gemini-3.1-flash-lite",
   "gemini-2.5-pro": "google/gemini-2.5-pro",
 
@@ -98,7 +98,7 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
 
   // ── Alibaba (Qwen) ─────────────────────────────────────────
   "qwen3.7-max": "qwen/qwen3.7-max",
-  "qwen3.6-max-preview": "qwen/qwen3.6-max",
+  "qwen3.6-max-preview": "qwen/qwen3.6-max-preview",
   "qwen3.6-plus": "qwen/qwen3.6-plus",
   "qwen3.5-397b-a17b": "qwen/qwen3.5-397b-a17b",
   "qwen3.5-122b-a10b": "qwen/qwen3.5-122b-a10b",
@@ -121,7 +121,7 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "deepseek-v3.2-exp": "deepseek/deepseek-v3.2",
 
   // ── xAI (Grok) ─────────────────────────────────────────────
-  "grok-4.20-beta": "x-ai/grok-4.20-beta",
+  "grok-4.20-beta": "x-ai/grok-4.20",
   "grok-4.3": "x-ai/grok-4.3",
   "grok-4-1-fast": "x-ai/grok-4.1-fast",
   "grok-4.1-thinking": "x-ai/grok-4.1",
