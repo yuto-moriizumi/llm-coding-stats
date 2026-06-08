@@ -783,42 +783,23 @@ export default function ParetoChart({ models }: ParetoChartProps) {
                   />
                 )}
 
-                {/* Scatter plot for all models */}
-                <Scatter
-                  name="Models"
-                  data={scatterData}
-                  shape={renderDot}
-                />
-
                 {/* Pareto frontier line */}
                 {paretoData.length >= 2 && (
                   <Scatter
                     name="Pareto Frontier"
                     data={paretoData}
                     line={{ stroke: '#40b841', strokeWidth: 2.5 }}
-                    shape={(props: { cx?: number; cy?: number; payload?: LLMModel }) => {
-                      const { cx, cy, payload } = props;
-                      if (cx == null || cy == null || !payload?.provider) return null;
-                      return (
-                        <circle
-                          cx={cx}
-                          cy={cy}
-                          r={hoveredModel?.name === payload.name ? 7 : 5}
-                          fill={PROVIDER_COLORS[payload.provider]}
-                          opacity={hoveredModel?.name === payload.name ? 1 : 0.9}
-                          stroke={hoveredModel?.name === payload.name ? '#ffffff' : 'none'}
-                          strokeWidth={hoveredModel?.name === payload.name ? 1.5 : 0}
-                          style={{ cursor: 'pointer', transition: 'all 150ms' }}
-                          onMouseEnter={() => {
-                            setHoveredModel(payload);
-                          }}
-                          onMouseLeave={() => setHoveredModel(null)}
-                        />
-                      );
-                    }}
+                    shape={() => null}
                     isAnimationActive={false}
                   />
                 )}
+
+                {/* Scatter plot for all models */}
+                <Scatter
+                  name="Models"
+                  data={scatterData}
+                  shape={renderDot}
+                />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
