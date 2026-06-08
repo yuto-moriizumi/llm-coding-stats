@@ -77,6 +77,9 @@ function CustomTooltip({ active, hoveredModel }: CustomTooltipProps) {
           <span className="text-gray-300">Arena:</span> {hoveredModel.arenaScore}
         </span>
         <span>
+          <span className="text-gray-300">Blended price:</span> ${blendedPrice(hoveredModel).toFixed(2)}/1M
+        </span>
+        <span>
           <span className="text-gray-300">Input:</span> ${hoveredModel.inputPrice}/1M
         </span>
         <span>
