@@ -295,6 +295,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     if (zoomDomain) {
       const svg = chartWrapperRef.current?.querySelector("svg");
       if (!svg) return;
+      e.preventDefault();
       const rect = svg.getBoundingClientRect();
       isPanningRef.current = true;
       panStartPixelRef.current = { px: e.clientX - rect.left, py: e.clientY - rect.top };
@@ -303,6 +304,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     }
     const coords = getDataCoordinate(e.nativeEvent);
     if (!coords) return;
+    e.preventDefault();
     setIsSelecting(true);
     setRefAreaLeft(coords.x);
     setRefAreaRight(coords.x);
@@ -712,10 +714,10 @@ export default function ParetoChart({ models }: ParetoChartProps) {
       {/* Chart */}
       <div
         ref={containerRef}
-        className={`relative min-h-[400px] flex-1 overflow-hidden ${isSelecting ? "cursor-crosshair" : zoomDomain ? "cursor-grab" : "cursor-default"}`}
+        className={`relative min-h-[400px] flex-1 select-none overflow-hidden ${isSelecting ? "cursor-crosshair" : zoomDomain ? "cursor-grab" : "cursor-default"}`}
       >
         {containerSize.width > 0 && (
-          <div ref={chartWrapperRef} onMouseDown={handleMouseDown}>
+          <div ref={chartWrapperRef} className="select-none" onMouseDown={handleMouseDown}>
             <ResponsiveContainer width="100%" height={chartHeight}>
               <ComposedChart margin={CHART_MARGIN}>
                 <CartesianGrid
