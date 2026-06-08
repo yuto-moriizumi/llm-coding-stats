@@ -56,9 +56,9 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "claude-sonnet-4-6": "anthropic/claude-sonnet-4",
   "claude-opus-4-5-thinking": "anthropic/claude-opus-4.5",
   "claude-opus-4-5": "anthropic/claude-opus-4.5",
-  "claude-sonnet-4-5-thinking": "anthropic/claude-4.5-sonnet-20250929",
+  "claude-sonnet-4-5-thinking": "anthropic/claude-sonnet-4.5",
   "claude-opus-4-1": "anthropic/claude-opus-4.1",
-  "claude-sonnet-4-5": "anthropic/claude-4.5-sonnet-20250929",
+  "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
   "claude-haiku-4-5": "anthropic/claude-haiku-4.5",
 
   // ─ OpenAI ─────────────────────────────────────────────────
@@ -198,6 +198,11 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
 
     const json: OpenRouterResponse = await res.json();
 
+    // フォールバック対象をマッピングに含まれるモデルのみに限定
+    const targetSlugs = new Set<
+      string
+    >(Object.values(MODEL_NAME_TO_OPENROUTER_SLUG));
+
     for (const model of json.data) {
       const slug = model.slug;
       const endpoints = model.endpoints ?? [];
@@ -216,7 +221,7 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
 
       if (bestThroughput != null) {
         throughputBySlug.set(slug, bestThroughput);
-      } else if (model.permaslug) {
+      } else if (model.permaslug && targetSlugs.has(slug)) {
         missingEntries.push({ slug, permaslug: model.permaslug });
       }
     }
@@ -225,30 +230,33 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
   }
 
   // stats/endpoint API でフォールバック（permaslug を使う）
-  for (const entry of missingEntries) {
-    if (!entry.permaslug) continue;
-    try {
-      const res = await fetch(
-        `https://openrouter.ai/api/frontend/stats/endpoint?permaslug=${encodeURIComponent(entry.permaslug)}&variant=standard`,
-        { next: { revalidate: 600 } },
-      );
-      if (!res.ok) continue;
-      const json = await res.json();
-      const endpoints = json.data ?? [];
-
-      let bestThroughput: number | undefined;
-      for (const ep of endpoints) {
-        const t = ep.stats?.p50_throughput;
-        if (t != null && (bestThroughput === undefined || t > bestThroughput)) {
-          bestThroughput = t;
+  // 直列だと遅いため、同時3件まで並列で fetch
+  while (missingEntries.length > 0) {
+    const batch = missingEntries.splice(0, 3);
+    const results = await Promise.allSettled(
+      batch.map(async (entry) => {
+        if (!entry.permaslug) return undefined;
+        const res = await fetch(
+          `https://openrouter.ai/api/frontend/stats/endpoint?permaslug=${encodeURIComponent(entry.permaslug)}&variant=standard`,
+          { signal: AbortSignal.timeout(5000), next: { revalidate: 600 } },
+        );
+        if (!res.ok) return undefined;
+        const json = await res.json();
+        const endpoints = json.data ?? [];
+        let bestThroughput: number | undefined;
+        for (const ep of endpoints) {
+          const t = ep.stats?.p50_throughput;
+          if (t != null && (bestThroughput === undefined || t > bestThroughput)) {
+            bestThroughput = t;
+          }
         }
+        return { slug: entry.slug, throughput: bestThroughput };
+      }),
+    );
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value?.throughput != null) {
+        throughputBySlug.set(r.value.slug, r.value.throughput);
       }
-
-      if (bestThroughput != null) {
-        throughputBySlug.set(entry.slug, bestThroughput);
-      }
-    } catch {
-      // 個別フォールバックエラーは無視
     }
   }
 

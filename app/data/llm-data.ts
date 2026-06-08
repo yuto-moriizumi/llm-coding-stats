@@ -158,7 +158,6 @@ export const LLM_MODELS: LLMModel[] = [
   { name: "qwen3.5-397b-a17b", provider: "alibaba", arenaScore: 1394, inputPrice: 0.39, outputPrice: 2.34 },
   { name: "qwen3.5-122b-a10b", provider: "alibaba", arenaScore: 1365, inputPrice: 0.26, outputPrice: 2.08 },
   { name: "qwen3.5-27b", provider: "alibaba", arenaScore: 1357, inputPrice: 0.2, outputPrice: 1.56 },
-  { name: "qwen3-coder-480b", provider: "alibaba", arenaScore: 1282, inputPrice: 0.4, outputPrice: 1.6 },
   { name: "qwen3.5-35b-a3b", provider: "alibaba", arenaScore: 1250, inputPrice: 0.14, outputPrice: 1 },
   { name: "qwen3.5-flash", provider: "alibaba", arenaScore: 1238, inputPrice: 0, outputPrice: 0 },
 
@@ -178,8 +177,8 @@ export const LLM_MODELS: LLMModel[] = [
   // ── xAI (Grok) ────────────────────────────────────────────
   { name: "grok-4.20-beta", provider: "xai", arenaScore: 1393, inputPrice: 2, outputPrice: 6 },
   { name: "grok-4.3", provider: "xai", arenaScore: 1371, inputPrice: 1.25, outputPrice: 2.5 },
-  { name: "grok-4-1-fast", provider: "xai", arenaScore: 1234, inputPrice: 0.2, outputPrice: 0.5 },
-  { name: "grok-4.1-thinking", provider: "xai", arenaScore: 1209, inputPrice: 0, outputPrice: 0 },
+  { name: "grok-4-1-fast", provider: "xai", arenaScore: 1234, inputPrice: 0.2, outputPrice: 0.5, deprecated: true },
+  { name: "grok-4.1-thinking", provider: "xai", arenaScore: 1209, inputPrice: 0, outputPrice: 0, deprecated: true },
   { name: "grok-4-fast", provider: "xai", arenaScore: 1150, inputPrice: 0.2, outputPrice: 0.5 },
   { name: "grok-code-fast-1", provider: "xai", arenaScore: 1140, inputPrice: 0.2, outputPrice: 1.5 },
 
@@ -193,7 +192,7 @@ export const LLM_MODELS: LLMModel[] = [
   { name: "hunyuan-hy3-preview", provider: "tencent", arenaScore: 1364, inputPrice: 0, outputPrice: 0 },
 
   // ── Kwai ───────────────────────────────────────────────────
-  { name: "KAT-Coder-Pro-V1", provider: "kwai", arenaScore: 1259, inputPrice: 0.21, outputPrice: 0.83 },
+  { name: "KAT-Coder-Pro-V1", provider: "kwai", arenaScore: 1259, inputPrice: 0.21, outputPrice: 0.83, deprecated: true },
 
   // ── IBM ────────────────────────────────────────────────────
   { name: "granite-4.1-8b", provider: "ibm", arenaScore: 1201, inputPrice: 0.05, outputPrice: 0.1 },
