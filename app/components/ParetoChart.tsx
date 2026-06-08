@@ -721,6 +721,9 @@ export default function ParetoChart({ models }: ParetoChartProps) {
                           r={5}
                           fill={PROVIDER_COLORS[payload.provider as Provider]}
                           strokeWidth={0}
+                          onMouseEnter={() => setHoveredModel(payload as LLMModel)}
+                          onMouseLeave={() => setHoveredModel(null)}
+                          style={{ cursor: 'pointer', pointerEvents: 'all' }}
                         />
                       );
                     }}
