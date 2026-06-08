@@ -1,6 +1,7 @@
 // OpenRouter frontend API — throughput (tokens/s) data fetching
 
 interface RoutingHeuristics {
+  p50_throughput_2_hours?: number;
   p50_throughput?: number;
   p50_latency?: number;
   p75_throughput_30_minutes?: number;
@@ -193,7 +194,7 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
       // 全エンドポイントから最大 throughput を取得
       let bestThroughput: number | undefined;
       for (const ep of endpoints) {
-        const t = ep.routing_heuristics?.p50_throughput;
+        const t = ep.routing_heuristics?.p50_throughput_2_hours;
         if (t != null && (bestThroughput === undefined || t > bestThroughput)) {
           bestThroughput = t;
         }
