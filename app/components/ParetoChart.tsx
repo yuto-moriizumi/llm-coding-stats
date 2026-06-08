@@ -33,7 +33,7 @@ const PRICE_TICKS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
 const SCORE_TICKS = [1100, 1200, 1300, 1400, 1500, 1600];
 
 // ── Chart margins (for label positioning) ────────────────────
-const CHART_MARGIN = { top: 20, right: 30, bottom: 40, left: 60 };
+const CHART_MARGIN = { top: 8, right: 30, bottom: 40, left: 60 };
 
 // ── Pareto frontier computation ──────────────────────────────
 function computeParetoFrontier(models: LLMModel[]): LLMModel[] {
@@ -301,7 +301,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
   );
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col p-2 sm:p-6">
+      <div className="flex min-w-0 flex-1 flex-col p-2 sm:p-2">
 
       {/* Provider filter chips */}
       <div className="mb-3 flex flex-wrap gap-1.5">

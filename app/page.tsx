@@ -22,7 +22,7 @@ export default async function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-[#0a0a0a]">
       {/* Header */}
-      <header className="border-b border-white/5 px-6 py-4">
+      <header className="border-b border-white/5 px-6 py-2">
         <h1 className="text-lg font-semibold text-gray-100">
           LLM Performance Stats
         </h1>
@@ -35,7 +35,7 @@ export default async function Home() {
       </header>
 
       {/* Main chart */}
-      <main className="flex w-full flex-1 flex-col px-4 py-6">
+      <main className="flex w-full flex-1 flex-col px-4 py-2">
         <ParetoChart models={models} />
       </main>
 
