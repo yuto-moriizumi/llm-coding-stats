@@ -119,7 +119,7 @@ function CustomDot({ cx, cy, payload, hoveredModel, onMouseEnter, onMouseLeave }
     <circle
       cx={cx}
       cy={cy}
-      r={isHovered ? 6 : 4}
+      r={isHovered ? 7 : 5}
       fill={PROVIDER_COLORS[payload.provider]}
       opacity={isHovered ? 1 : 0.7}
       style={{ cursor: "pointer", transition: "all 150ms" }}
