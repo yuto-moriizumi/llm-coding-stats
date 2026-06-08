@@ -4,7 +4,6 @@ import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import {
   ComposedChart,
   Scatter,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -793,25 +792,27 @@ export default function ParetoChart({ models }: ParetoChartProps) {
 
                 {/* Pareto frontier line */}
                 {paretoData.length >= 2 && (
-                  <Line
-                    type="linear"
-                    dataKey="y"
+                  <Scatter
+                    name="Pareto Frontier"
                     data={paretoData}
-                    stroke="#40b841"
-                    strokeWidth={2.5}
-                    dot={(props) => {
+                    line={{ stroke: '#40b841', strokeWidth: 2.5 }}
+                    shape={(props: { cx?: number; cy?: number; payload?: LLMModel }) => {
                       const { cx, cy, payload } = props;
                       if (cx == null || cy == null || !payload?.provider) return null;
                       return (
                         <circle
                           cx={cx}
                           cy={cy}
-                          r={5}
-                          fill={PROVIDER_COLORS[payload.provider as Provider]}
-                          strokeWidth={0}
-                          onMouseEnter={() => setHoveredModel(payload as LLMModel)}
+                          r={hoveredModel?.name === payload.name ? 7 : 5}
+                          fill={PROVIDER_COLORS[payload.provider]}
+                          opacity={hoveredModel?.name === payload.name ? 1 : 0.9}
+                          stroke={hoveredModel?.name === payload.name ? '#ffffff' : 'none'}
+                          strokeWidth={hoveredModel?.name === payload.name ? 1.5 : 0}
+                          style={{ cursor: 'pointer', transition: 'all 150ms' }}
+                          onMouseEnter={() => {
+                            setHoveredModel(payload);
+                          }}
                           onMouseLeave={() => setHoveredModel(null)}
-                          style={{ cursor: 'pointer', pointerEvents: 'all' }}
                         />
                       );
                     }}
