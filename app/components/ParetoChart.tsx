@@ -62,12 +62,14 @@ function formatPrice(price: number): string {
 interface CustomTooltipProps {
   active?: boolean;
   payload?: Array<{ payload: LLMModel }>;
+  hoveredModel?: LLMModel | null;
 }
 
-function CustomTooltip({ active, payload }: CustomTooltipProps) {
-  if (!active || !payload?.length) return null;
+function CustomTooltip({ active, payload, hoveredModel }: CustomTooltipProps) {
+  if (!active) return null;
 
-  const model = payload[0].payload;
+  const model = hoveredModel ?? payload?.[0]?.payload;
+  if (!model) return null;
 
   return (
     <div className="rounded-lg border border-white/10 bg-gray-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur-sm">
@@ -660,7 +662,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
                 <ZAxis range={[1, 1]} />
 
                 <Tooltip
-                  content={<CustomTooltip />}
+                  content={<CustomTooltip hoveredModel={hoveredModel} />}
                   cursor={{
                     strokeDasharray: "3,3",
                     stroke: "rgba(255,255,255,0.3)",
