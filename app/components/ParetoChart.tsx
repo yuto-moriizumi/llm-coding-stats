@@ -137,7 +137,7 @@ function CustomDot({ cx, cy, payload, hoveredModel, onMouseEnter, onMouseLeave }
         r={isHovered ? 9 : 6}
         fill={PROVIDER_COLORS[payload.provider]}
         stroke="#ffffff"
-        strokeWidth={isHovered ? 3 : 2.5}
+        strokeWidth={isHovered ? 2 : 1.5}
         opacity={1}
         style={{ cursor: "pointer", transition: "all 150ms", pointerEvents: "all" }}
         onMouseEnter={onMouseEnter}
@@ -826,7 +826,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
                     name="Pareto Frontier"
                     data={paretoData}
                     zIndex={1}
-                    line={{ stroke: '#40b841', strokeWidth: 1.5, opacity: 0.8 }}
+                    line={{ stroke: '#40b841', strokeWidth: 2.5, opacity: 0.8 }}
                     shape={() => null}
                     isAnimationActive={false}
                   />
