@@ -61,42 +61,38 @@ function formatPrice(price: number): string {
 // ── Custom Tooltip ───────────────────────────────────────────
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ payload: LLMModel }>;
   hoveredModel?: LLMModel | null;
 }
 
-function CustomTooltip({ active, payload, hoveredModel }: CustomTooltipProps) {
-  if (!active) return null;
-
-  const model = hoveredModel ?? payload?.[0]?.payload;
-  if (!model) return null;
+function CustomTooltip({ active, hoveredModel }: CustomTooltipProps) {
+  if (!active || !hoveredModel) return null;
 
   return (
     <div className="rounded-lg border border-white/10 bg-gray-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur-sm">
       <div className="mb-2 font-medium text-gray-100">
-        {model.name} — ${blendedPrice(model).toFixed(2)}/1M
+        {hoveredModel.name} — ${blendedPrice(hoveredModel).toFixed(2)}/1M
       </div>
       <div className="flex flex-col gap-0.5 text-gray-400">
         <span>
-          <span className="text-gray-300">Arena:</span> {model.arenaScore}
+          <span className="text-gray-300">Arena:</span> {hoveredModel.arenaScore}
         </span>
         <span>
-          <span className="text-gray-300">Input:</span> ${model.inputPrice}/1M
+          <span className="text-gray-300">Input:</span> ${hoveredModel.inputPrice}/1M
         </span>
         <span>
-          <span className="text-gray-300">Output:</span> ${model.outputPrice}/1M
+          <span className="text-gray-300">Output:</span> ${hoveredModel.outputPrice}/1M
         </span>
-        {model.throughput != null && (
+        {hoveredModel.throughput != null && (
           <span>
-            <span className="text-gray-300">Throughput:</span> {model.throughput} tok/s
+            <span className="text-gray-300">Throughput:</span> {hoveredModel.throughput} tok/s
           </span>
         )}
         <span className="mt-0.5 flex items-center gap-1">
           <span
             className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: PROVIDER_COLORS[model.provider] }}
+            style={{ backgroundColor: PROVIDER_COLORS[hoveredModel.provider] }}
           />
-          {PROVIDER_LABELS[model.provider]}
+          {PROVIDER_LABELS[hoveredModel.provider]}
         </span>
       </div>
     </div>
@@ -679,6 +675,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
 
                 <Tooltip
                   content={<CustomTooltip hoveredModel={hoveredModel} />}
+                  active={hoveredModel !== null}
                   cursor={{
                     strokeDasharray: "3,3",
                     stroke: "rgba(255,255,255,0.3)",
