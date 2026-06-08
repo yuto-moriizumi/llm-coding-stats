@@ -312,7 +312,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
             <button
               key={provider}
               onClick={() => toggleProvider(provider)}
-              className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition-colors"
+              className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-sm transition-colors"
               style={{
                 borderColor: active
                   ? PROVIDER_COLORS[provider]
@@ -336,7 +336,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
         {selectedProviders.size > 0 && (
           <button
             onClick={() => setSelectedProviders(new Set())}
-            className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-gray-400 transition-colors hover:text-gray-200"
+            className="rounded-md border border-white/10 px-2 py-1 text-sm text-gray-400 transition-colors hover:text-gray-200"
           >
             Clear
           </button>
@@ -345,7 +345,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
 
       {/* Throughput filter */}
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <span className="text-[11px] font-medium text-gray-400">
+        <span className="text-sm font-medium text-gray-400">
           Min Throughput:
         </span>
         <div className="flex flex-wrap gap-1">
@@ -355,7 +355,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
               <button
                 key={value}
                 onClick={() => setMinThroughput(value)}
-                className={`rounded-md border px-2 py-0.5 text-[11px] transition-colors ${
+                className={`rounded-md border px-2 py-0.5 text-sm transition-colors ${
                   active
                     ? "border-blue-500/60 bg-blue-500/20 text-blue-400"
                     : "border-white/10 text-gray-500 hover:text-gray-300"
@@ -377,7 +377,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
           title={`Min throughput: ${minThroughput} tok/s`}
         />
         {minThroughput > 0 && (
-          <span className="text-[11px] text-gray-500">
+          <span className="text-sm text-gray-500">
             ≥{minThroughput} tok/s
           </span>
         )}
@@ -403,14 +403,14 @@ export default function ParetoChart({ models }: ParetoChartProps) {
                 domain={[PRICE_MIN, priceMax]}
                 ticks={PRICE_TICKS.filter((t) => t <= priceMax)}
                 tickFormatter={formatPrice}
-                tick={{ fill: "#eeeef0", fontSize: 11 }}
+                tick={{ fill: "#eeeef0", fontSize: 13 }}
                 stroke="rgba(255,255,255,0.2)"
                 label={{
                   value: "Blended price per 1M tokens (3:1 Ratio)",
                   position: "insideBottom",
                   offset: -10,
                   fill: "#9ca3af",
-                  fontSize: 11,
+                  fontSize: 13,
                 }}
               />
 
@@ -419,7 +419,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
                 dataKey="y"
                 domain={[SCORE_MIN, SCORE_MAX]}
                 ticks={SCORE_TICKS}
-                tick={{ fill: "#eeeef0", fontSize: 11 }}
+                tick={{ fill: "#eeeef0", fontSize: 13 }}
                 stroke="rgba(255,255,255,0.2)"
                 label={{
                   value: "Arena Score",
@@ -427,7 +427,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
                   position: "insideLeft",
                   offset: 10,
                   fill: "#eeeef0",
-                  fontSize: 12,
+                  fontSize: 14,
                 }}
               />
 
