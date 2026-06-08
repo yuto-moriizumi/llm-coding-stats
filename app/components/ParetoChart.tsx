@@ -153,6 +153,16 @@ export default function ParetoChart({ models }: ParetoChartProps) {
   const [refAreaBottom, setRefAreaBottom] = useState<number | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
 
+  // Mutable refs for panning so mousemove/mouseup always read current values
+  const isPanningRef = useRef(false);
+  const panStartPixelRef = useRef<{ px: number; py: number } | null>(null);
+  const panStartDomainRef = useRef<{
+    x1: number;
+    x2: number;
+    y1: number;
+    y2: number;
+  } | null>(null);
+
   // Track container size with ResizeObserver
   useEffect(() => {
     const el = containerRef.current;
@@ -283,6 +293,15 @@ export default function ParetoChart({ models }: ParetoChartProps) {
   }, [xDomain, yDomain]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (zoomDomain) {
+      const svg = chartWrapperRef.current?.querySelector("svg");
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      isPanningRef.current = true;
+      panStartPixelRef.current = { px: e.clientX - rect.left, py: e.clientY - rect.top };
+      panStartDomainRef.current = zoomDomain;
+      return;
+    }
     const coords = getDataCoordinate(e.nativeEvent);
     if (!coords) return;
     setIsSelecting(true);
@@ -290,18 +309,72 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     setRefAreaRight(coords.x);
     setRefAreaTop(coords.y);
     setRefAreaBottom(coords.y);
-  }, [getDataCoordinate]);
+  }, [zoomDomain, getDataCoordinate]);
+
+  // Convert pixel offset to data offset and apply to domain
+  const applyPan = useCallback(
+    (currentPixelX: number, currentPixelY: number) => {
+      if (!chartWrapperRef.current || !panStartDomainRef.current || !panStartPixelRef.current) return;
+      const svg = chartWrapperRef.current.querySelector("svg");
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      const plotWidth = rect.width - CHART_MARGIN.left - CHART_MARGIN.right;
+      const plotHeight = rect.height - CHART_MARGIN.top - CHART_MARGIN.bottom;
+
+      const { px: startPx, py: startPy } = panStartPixelRef.current;
+      const { x1: sX1, x2: sX2, y1: sY1, y2: sY2 } = panStartDomainRef.current;
+
+      const dxPixel = currentPixelX - startPx;
+      const dyPixel = currentPixelY - startPy;
+
+      // X axis is log scale; convert from pixel shift to data shift
+      const logMin = Math.log10(sX1);
+      const logMax = Math.log10(sX2);
+      const dataPerPixelX = (logMax - logMin) / plotWidth;
+      const newLogMin = logMin - dxPixel * dataPerPixelX;
+      const newLogMax = logMax - dxPixel * dataPerPixelX;
+      const newX1 = Math.pow(10, newLogMin);
+      const newX2 = Math.pow(10, newLogMax);
+
+      // Y axis is linear
+      const dataPerPixelY = (sY2 - sY1) / plotHeight;
+      const newY1 = sY1 + dyPixel * dataPerPixelY;
+      const newY2 = sY2 + dyPixel * dataPerPixelY;
+
+      // Clamp to global bounds
+      const clampedX1 = Math.max(newX1, PRICE_MIN * 0.5);
+      const clampedX2 = Math.min(newX2, priceMax * 2);
+      const clampedY1 = Math.max(newY1, SCORE_MIN - 100);
+      const clampedY2 = Math.min(newY2, SCORE_MAX + 100);
+
+      setZoomDomain({ x1: clampedX1, x2: clampedX2, y1: clampedY1, y2: clampedY2 });
+    },
+    [priceMax],
+  );
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (isPanningRef.current && panStartPixelRef.current) {
+      const svg = chartWrapperRef.current?.querySelector("svg");
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      applyPan(e.clientX - rect.left, e.clientY - rect.top);
+      return;
+    }
     if (!isSelecting || refAreaLeft == null || refAreaTop == null) return;
     const coords = getDataCoordinate(e);
     if (!coords) return;
     setRefAreaRight(coords.x);
     setRefAreaTop(coords.y);
     setRefAreaBottom(coords.y);
-  }, [isSelecting, refAreaLeft, refAreaTop, getDataCoordinate]);
+  }, [isSelecting, refAreaLeft, refAreaTop, applyPan, getDataCoordinate]);
 
   const handleMouseUp = useCallback(() => {
+    if (isPanningRef.current) {
+      isPanningRef.current = false;
+      panStartPixelRef.current = null;
+      panStartDomainRef.current = null;
+      return;
+    }
     if (!isSelecting || refAreaLeft == null || refAreaRight == null || refAreaTop == null || refAreaBottom == null) {
       setIsSelecting(false);
       setRefAreaLeft(null);
@@ -334,9 +407,8 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     setRefAreaBottom(null);
   }, [isSelecting, refAreaLeft, refAreaRight, refAreaTop, refAreaBottom]);
 
-  // Attach global mouse event listeners for selection
+  // Attach global mouse event listeners for selection / panning
   useEffect(() => {
-    if (!isSelecting) return;
     const onMove = (e: MouseEvent) => handleMouseMove(e);
     const onUp = () => handleMouseUp();
     document.addEventListener("mousemove", onMove);
@@ -345,7 +417,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };
-  }, [isSelecting, handleMouseMove, handleMouseUp]);
+  }, [handleMouseMove, handleMouseUp]);
 
   // ── Wheel zoom ──
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
@@ -621,14 +693,14 @@ export default function ParetoChart({ models }: ParetoChartProps) {
           </button>
         )}
         <span className="ml-1 text-[11px] text-gray-500">
-          Drag to zoom • Scroll wheel • {zoomDomain ? "Reset to view all" : "Click-drag to select area"}
+          {zoomDomain ? "Drag to pan • Scroll to zoom • Click without zoom → select area" : "Drag to select area • Scroll wheel • Zoom-out to unselect"}
         </span>
       </div>
 
       {/* Chart */}
       <div
         ref={containerRef}
-        className={`relative min-h-[400px] flex-1 overflow-hidden ${isSelecting ? "cursor-crosshair" : "cursor-default"}`}
+        className={`relative min-h-[400px] flex-1 overflow-hidden ${isSelecting ? "cursor-crosshair" : zoomDomain ? "cursor-grab" : "cursor-default"}`}
       >
         {containerSize.width > 0 && (
           <div ref={chartWrapperRef} onMouseDown={handleMouseDown} onWheel={handleWheel}>
