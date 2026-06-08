@@ -26,6 +26,7 @@ interface OpenRouterModel {
   endpoint?: OpenRouterEndpoint;
   endpoints?: OpenRouterEndpoint[];
   pricing?: OpenRouterPricing;
+  permaslug?: string;
 }
 
 interface OpenRouterResponse {
@@ -55,9 +56,9 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "claude-sonnet-4-6": "anthropic/claude-sonnet-4",
   "claude-opus-4-5-thinking": "anthropic/claude-opus-4.5",
   "claude-opus-4-5": "anthropic/claude-opus-4.5",
-  "claude-sonnet-4-5-thinking": "anthropic/claude-sonnet-4.5",
+  "claude-sonnet-4-5-thinking": "anthropic/claude-4.5-sonnet-20250929",
   "claude-opus-4-1": "anthropic/claude-opus-4.1",
-  "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
+  "claude-sonnet-4-5": "anthropic/claude-4.5-sonnet-20250929",
   "claude-haiku-4-5": "anthropic/claude-haiku-4.5",
 
   // ─ OpenAI ─────────────────────────────────────────────────
@@ -117,7 +118,6 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "qwen3.5-397b-a17b": "qwen/qwen3.5-397b-a17b",
   "qwen3.5-122b-a10b": "qwen/qwen3.5-122b-a10b",
   "qwen3.5-27b": "qwen/qwen3.5-27b",
-  "qwen3-coder-480b": "qwen/qwen3-coder-480b",
   "qwen3.5-35b-a3b": "qwen/qwen3.5-35b-a3b",
   "qwen3.5-flash": "qwen/qwen3.5-flash",
 
@@ -143,8 +143,8 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "grok-code-fast-1": "x-ai/grok-code-fast-1",
 
   // ── Mistral ────────────────────────────────────────────────
-  "mistral-medium-3.5": "mistralai/mistral-medium-3.5",
-  "mistral-large-3": "mistralai/mistral-large-3",
+  "mistral-medium-3.5": "mistralai/mistral-medium-3-5",
+  "mistral-large-3": "mistralai/mistral-large-2512",
   "devstral-2": "mistralai/devstral-2",
   "devstral-medium": "mistralai/devstral-medium",
 
@@ -184,6 +184,7 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
   }
 
   const throughputBySlug = new Map<string, number>();
+  const missingEntries: { slug: string; permaslug?: string }[] = [];
 
   try {
     const res = await fetch("https://openrouter.ai/api/frontend/models");
@@ -215,10 +216,40 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
 
       if (bestThroughput != null) {
         throughputBySlug.set(slug, bestThroughput);
+      } else if (model.permaslug) {
+        missingEntries.push({ slug, permaslug: model.permaslug });
       }
     }
   } catch (err) {
     console.error("[openrouter] Error fetching throughput data:", err);
+  }
+
+  // stats/endpoint API でフォールバック（permaslug を使う）
+  for (const entry of missingEntries) {
+    if (!entry.permaslug) continue;
+    try {
+      const res = await fetch(
+        `https://openrouter.ai/api/frontend/stats/endpoint?permaslug=${encodeURIComponent(entry.permaslug)}&variant=standard`,
+        { next: { revalidate: 600 } },
+      );
+      if (!res.ok) continue;
+      const json = await res.json();
+      const endpoints = json.data ?? [];
+
+      let bestThroughput: number | undefined;
+      for (const ep of endpoints) {
+        const t = ep.stats?.p50_throughput;
+        if (t != null && (bestThroughput === undefined || t > bestThroughput)) {
+          bestThroughput = t;
+        }
+      }
+
+      if (bestThroughput != null) {
+        throughputBySlug.set(entry.slug, bestThroughput);
+      }
+    } catch {
+      // 個別フォールバックエラーは無視
+    }
   }
 
   // ローカルモデル名 → throughput の Map に変換
