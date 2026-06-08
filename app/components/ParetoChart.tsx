@@ -11,6 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   ZAxis,
+  ReferenceArea,
 } from "recharts";
 import {
   PROVIDER_COLORS,
@@ -160,16 +161,28 @@ function CustomDot({ cx, cy, payload, hoveredModel, onMouseEnter, onMouseLeave }
   );
 }
 
-// ── Pareto extension lines are now handled by extending paretoData ──
-
 export default function ParetoChart({ models }: ParetoChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const chartWrapperRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [hoveredModel, setHoveredModel] = useState<LLMModel | null>(null);
   const [selectedProviders, setSelectedProviders] = useState<Set<Provider>>(
     new Set(),
   );
   const [minThroughput, setMinThroughput] = useState<number>(0);
+
+  // ── Zoom state ──
+  const [zoomDomain, setZoomDomain] = useState<{
+    x1: number;
+    x2: number;
+    y1: number;
+    y2: number;
+  } | null>(null);
+  const [refAreaLeft, setRefAreaLeft] = useState<number | null>(null);
+  const [refAreaRight, setRefAreaRight] = useState<number | null>(null);
+  const [refAreaTop, setRefAreaTop] = useState<number | null>(null);
+  const [refAreaBottom, setRefAreaBottom] = useState<number | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
 
   // Track container size with ResizeObserver
   useEffect(() => {
@@ -241,6 +254,220 @@ export default function ParetoChart({ models }: ParetoChartProps) {
       PRICE_TICKS[PRICE_TICKS.length - 1]
     );
   }, [filteredModels]);
+
+  // Effective domain (zoom or full)
+  const xDomain = useMemo<[number, number]>(() => {
+    if (zoomDomain) return [zoomDomain.x1, zoomDomain.x2];
+    return [PRICE_MIN, priceMax];
+  }, [zoomDomain, priceMax]);
+
+  const yDomain = useMemo<[number, number]>(() => {
+    if (zoomDomain) return [zoomDomain.y1, zoomDomain.y2];
+    return [SCORE_MIN, SCORE_MAX];
+  }, [zoomDomain]);
+
+  // ── Mouse interaction for zoom ──
+  const getDataCoordinate = useCallback((e: MouseEvent): { x: number; y: number } | null => {
+    if (!chartWrapperRef.current) return null;
+    const svg = chartWrapperRef.current.querySelector("svg");
+    if (!svg) return null;
+    const rect = svg.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+
+    const left = CHART_MARGIN.left;
+    const right = CHART_MARGIN.right;
+    const top = CHART_MARGIN.top;
+    const bottom = CHART_MARGIN.bottom;
+
+    const plotWidth = rect.width - left - right;
+    const plotHeight = rect.height - top - bottom;
+
+    if (px < left || px > rect.width - right || py < top || py > rect.height - bottom) {
+      return null;
+    }
+
+    const relX = (px - left) / plotWidth;
+    const relY = (py - top) / plotHeight;
+
+    const logMin = Math.log10(xDomain[0]);
+    const logMax = Math.log10(xDomain[1]);
+    const x = Math.pow(10, logMin + relX * (logMax - logMin));
+    const y = yDomain[1] - relY * (yDomain[1] - yDomain[0]);
+    return { x, y };
+  }, [xDomain, yDomain]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const coords = getDataCoordinate(e.nativeEvent);
+    if (!coords) return;
+    setIsSelecting(true);
+    setRefAreaLeft(coords.x);
+    setRefAreaRight(coords.x);
+    setRefAreaTop(coords.y);
+    setRefAreaBottom(coords.y);
+  }, [getDataCoordinate]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isSelecting || refAreaLeft == null || refAreaTop == null) return;
+    const coords = getDataCoordinate(e);
+    if (!coords) return;
+    setRefAreaRight(coords.x);
+    setRefAreaTop(coords.y);
+    setRefAreaBottom(coords.y);
+  }, [isSelecting, refAreaLeft, refAreaTop, getDataCoordinate]);
+
+  const handleMouseUp = useCallback(() => {
+    if (!isSelecting || refAreaLeft == null || refAreaRight == null || refAreaTop == null || refAreaBottom == null) {
+      setIsSelecting(false);
+      setRefAreaLeft(null);
+      setRefAreaRight(null);
+      setRefAreaTop(null);
+      setRefAreaBottom(null);
+      return;
+    }
+
+    const left = Math.min(refAreaLeft, refAreaRight);
+    const right = Math.max(refAreaLeft, refAreaRight);
+    const bottom = Math.min(refAreaTop, refAreaBottom);
+    const top = Math.max(refAreaTop, refAreaBottom);
+
+    // Require a minimum selection size to avoid accidental zoom
+    if (right / left < 1.05 || top - bottom < 5) {
+      setIsSelecting(false);
+      setRefAreaLeft(null);
+      setRefAreaRight(null);
+      setRefAreaTop(null);
+      setRefAreaBottom(null);
+      return;
+    }
+
+    setZoomDomain({ x1: left, x2: right, y1: bottom, y2: top });
+    setIsSelecting(false);
+    setRefAreaLeft(null);
+    setRefAreaRight(null);
+    setRefAreaTop(null);
+    setRefAreaBottom(null);
+  }, [isSelecting, refAreaLeft, refAreaRight, refAreaTop, refAreaBottom]);
+
+  // Attach global mouse event listeners for selection
+  useEffect(() => {
+    if (!isSelecting) return;
+    const onMove = (e: MouseEvent) => handleMouseMove(e);
+    const onUp = () => handleMouseUp();
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+  }, [isSelecting, handleMouseMove, handleMouseUp]);
+
+  // ── Wheel zoom ──
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!chartWrapperRef.current) return;
+    const svg = chartWrapperRef.current.querySelector("svg");
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+
+    const left = CHART_MARGIN.left;
+    const right = CHART_MARGIN.right;
+    const top = CHART_MARGIN.top;
+    const bottom = CHART_MARGIN.bottom;
+
+    const plotWidth = rect.width - left - right;
+    const plotHeight = rect.height - top - bottom;
+
+    if (px < left || px > rect.width - right || py < top || py > rect.height - bottom) {
+      return;
+    }
+
+    const relX = (px - left) / plotWidth;
+    const relY = (py - top) / plotHeight;
+
+    // Convert to data coordinates
+    const logMin = Math.log10(xDomain[0]);
+    const logMax = Math.log10(xDomain[1]);
+    const focusX = Math.pow(10, logMin + relX * (logMax - logMin));
+    const focusY = yDomain[1] - relY * (yDomain[1] - yDomain[0]);
+
+    const zoomFactor = e.deltaY < 0 ? 0.8 : 1.25;
+    const currentX1 = zoomDomain?.x1 ?? PRICE_MIN;
+    const currentX2 = zoomDomain?.x2 ?? priceMax;
+    const currentY1 = zoomDomain?.y1 ?? SCORE_MIN;
+    const currentY2 = zoomDomain?.y2 ?? SCORE_MAX;
+
+    // Zoom X centered on focus
+    const xRatio = (focusX - currentX1) / (currentX2 - currentX1);
+    const newXRange = (currentX2 - currentX1) * zoomFactor;
+    const newX1 = focusX - xRatio * newXRange;
+    const newX2 = focusX + (1 - xRatio) * newXRange;
+
+    // Zoom Y centered on focus
+    const yRatio = (currentY2 - focusY) / (currentY2 - currentY1);
+    const newYRange = (currentY2 - currentY1) * zoomFactor;
+    const newY1 = focusY - (1 - yRatio) * newYRange;
+    const newY2 = focusY + yRatio * newYRange;
+
+    // Clamp to bounds
+    const clampedX1 = Math.max(Math.pow(10, Math.log10(newX1) - 1), PRICE_MIN);
+    const clampedX2 = Math.min(Math.pow(10, Math.log10(newX2) + 1), priceMax * 2);
+    const clampedY1 = Math.max(newY1, SCORE_MIN - 50);
+    const clampedY2 = Math.min(newY2, SCORE_MAX + 50);
+
+    if (clampedX1 < clampedX2 && clampedY1 < clampedY2) {
+      setZoomDomain({ x1: clampedX1, x2: clampedX2, y1: clampedY1, y2: clampedY2 });
+    }
+  }, [xDomain, yDomain, zoomDomain, priceMax]);
+
+  // ── Zoom buttons ──
+  const handleZoomIn = useCallback(() => {
+    const currentX1 = zoomDomain?.x1 ?? PRICE_MIN;
+    const currentX2 = zoomDomain?.x2 ?? priceMax;
+    const currentY1 = zoomDomain?.y1 ?? SCORE_MIN;
+    const currentY2 = zoomDomain?.y2 ?? SCORE_MAX;
+    const zoomFactor = 0.7;
+    const centerX = (currentX1 + currentX2) / 2;
+    const centerY = (currentY1 + currentY2) / 2;
+    const newXRange = (currentX2 - currentX1) * zoomFactor;
+    const newYRange = (currentY2 - currentY1) * zoomFactor;
+    setZoomDomain({
+      x1: centerX - newXRange / 2,
+      x2: centerX + newXRange / 2,
+      y1: centerY - newYRange / 2,
+      y2: centerY + newYRange / 2,
+    });
+  }, [zoomDomain, priceMax]);
+
+  const handleZoomOut = useCallback(() => {
+    const currentX1 = zoomDomain?.x1 ?? PRICE_MIN;
+    const currentX2 = zoomDomain?.x2 ?? priceMax;
+    const currentY1 = zoomDomain?.y1 ?? SCORE_MIN;
+    const currentY2 = zoomDomain?.y2 ?? SCORE_MAX;
+
+    const newX1 = currentX1 - (currentX2 - currentX1) * 0.5;
+    const newX2 = currentX2 + (currentX2 - currentX1) * 0.5;
+    const newY1 = currentY1 - (currentY2 - currentY1) * 0.5;
+    const newY2 = currentY2 + (currentY2 - currentY1) * 0.5;
+
+    if (newX1 <= PRICE_MIN && newX2 >= priceMax && newY1 <= SCORE_MIN && newY2 >= SCORE_MAX) {
+      setZoomDomain(null);
+      return;
+    }
+
+    setZoomDomain({
+      x1: Math.max(newX1, PRICE_MIN * 0.5),
+      x2: Math.min(newX2, priceMax * 2),
+      y1: Math.max(newY1, SCORE_MIN - 100),
+      y2: Math.min(newY2, SCORE_MAX + 100),
+    });
+  }, [zoomDomain, priceMax]);
+
+  const handleResetZoom = useCallback(() => {
+    setZoomDomain(null);
+  }, []);
 
   // Get all providers
   const providers = useMemo(() => {
@@ -383,97 +610,143 @@ export default function ParetoChart({ models }: ParetoChartProps) {
         )}
       </div>
 
+      {/* Zoom controls */}
+      <div className="mb-2 flex items-center gap-2">
+        <button
+          onClick={handleZoomIn}
+          className="rounded-md border border-white/10 bg-gray-800/50 px-2 py-1 text-xs text-gray-300 transition-colors hover:bg-gray-700/50"
+          title="Zoom in"
+        >
+          +
+        </button>
+        <button
+          onClick={handleZoomOut}
+          className="rounded-md border border-white/10 bg-gray-800/50 px-2 py-1 text-xs text-gray-300 transition-colors hover:bg-gray-700/50"
+          title="Zoom out"
+        >
+          −
+        </button>
+        {zoomDomain != null && (
+          <button
+            onClick={handleResetZoom}
+            className="rounded-md border border-white/10 bg-blue-600/20 px-2 py-1 text-xs text-blue-300 transition-colors hover:bg-blue-600/30"
+            title="Reset zoom"
+          >
+            Reset
+          </button>
+        )}
+        <span className="ml-1 text-[11px] text-gray-500">
+          Drag to zoom • Scroll wheel • {zoomDomain ? "Reset to view all" : "Click-drag to select area"}
+        </span>
+      </div>
+
       {/* Chart */}
       <div
         ref={containerRef}
-        className="relative min-h-[400px] flex-1 overflow-hidden"
+        className={`relative min-h-[400px] flex-1 overflow-hidden ${isSelecting ? "cursor-crosshair" : "cursor-default"}`}
       >
         {containerSize.width > 0 && (
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <ComposedChart margin={CHART_MARGIN}>
-              <CartesianGrid
-                strokeDasharray="4,4"
-                stroke="rgba(255,255,255,0.12)"
-              />
-
-              <XAxis
-                type="number"
-                dataKey="x"
-                scale="log"
-                domain={[PRICE_MIN, priceMax]}
-                ticks={PRICE_TICKS.filter((t) => t <= priceMax)}
-                tickFormatter={formatPrice}
-                tick={{ fill: "#eeeef0", fontSize: 13 }}
-                stroke="rgba(255,255,255,0.2)"
-                label={{
-                  value: "Blended price per 1M tokens (3:1 Ratio)",
-                  position: "insideBottom",
-                  offset: -10,
-                  fill: "#9ca3af",
-                  fontSize: 13,
-                }}
-              />
-
-              <YAxis
-                type="number"
-                dataKey="y"
-                domain={[SCORE_MIN, SCORE_MAX]}
-                ticks={SCORE_TICKS}
-                tick={{ fill: "#eeeef0", fontSize: 13 }}
-                stroke="rgba(255,255,255,0.2)"
-                label={{
-                  value: "Arena Score",
-                  angle: -90,
-                  position: "insideLeft",
-                  offset: 10,
-                  fill: "#eeeef0",
-                  fontSize: 14,
-                }}
-              />
-
-              <ZAxis range={[1, 1]} />
-
-              <Tooltip
-                content={<CustomTooltip allModels={filteredModels} />}
-                cursor={{
-                  strokeDasharray: "3,3",
-                  stroke: "rgba(255,255,255,0.3)",
-                }}
-              />
-
-              {/* Scatter plot for all models */}
-              <Scatter
-                name="Models"
-                data={scatterData}
-                shape={renderDot}
-              />
-
-              {/* Pareto frontier line (includes extensions to chart edges) */}
-              {paretoData.length >= 2 && (
-                <Line
-                  type="linear"
-                  dataKey="y"
-                  data={paretoData}
-                  stroke="#40b841"
-                  strokeWidth={2.5}
-                  dot={(props) => {
-                    const { cx, cy, payload } = props;
-                    if (cx == null || cy == null || !payload?.provider) return null;
-                    return (
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={5}
-                        fill={PROVIDER_COLORS[payload.provider as Provider]}
-                        strokeWidth={0}
-                      />
-                    );
-                  }}
-                  isAnimationActive={false}
+          <div ref={chartWrapperRef} onMouseDown={handleMouseDown} onWheel={handleWheel}>
+            <ResponsiveContainer width="100%" height={chartHeight}>
+              <ComposedChart margin={CHART_MARGIN}>
+                <CartesianGrid
+                  strokeDasharray="4,4"
+                  stroke="rgba(255,255,255,0.12)"
                 />
-              )}
-            </ComposedChart>
-          </ResponsiveContainer>
+
+                <XAxis
+                  type="number"
+                  dataKey="x"
+                  scale="log"
+                  domain={[xDomain[0], xDomain[1]]}
+                  ticks={PRICE_TICKS.filter((t) => t >= xDomain[0] && t <= xDomain[1])}
+                  tickFormatter={formatPrice}
+                  tick={{ fill: "#eeeef0", fontSize: 13 }}
+                  stroke="rgba(255,255,255,0.2)"
+                  label={{
+                    value: "Blended price per 1M tokens (3:1 Ratio)",
+                    position: "insideBottom",
+                    offset: -10,
+                    fill: "#9ca3af",
+                    fontSize: 13,
+                  }}
+                />
+
+                <YAxis
+                  type="number"
+                  dataKey="y"
+                  domain={[yDomain[0], yDomain[1]]}
+                  ticks={SCORE_TICKS.filter((t) => t >= yDomain[0] && t <= yDomain[1])}
+                  tick={{ fill: "#eeeef0", fontSize: 13 }}
+                  stroke="rgba(255,255,255,0.2)"
+                  label={{
+                    value: "Arena Score",
+                    angle: -90,
+                    position: "insideLeft",
+                    offset: 10,
+                    fill: "#eeeef0",
+                    fontSize: 14,
+                  }}
+                />
+
+                <ZAxis range={[1, 1]} />
+
+                <Tooltip
+                  content={<CustomTooltip allModels={filteredModels} />}
+                  cursor={{
+                    strokeDasharray: "3,3",
+                    stroke: "rgba(255,255,255,0.3)",
+                  }}
+                />
+
+                {/* Selection area overlay */}
+                {isSelecting && refAreaLeft != null && refAreaRight != null && refAreaTop != null && refAreaBottom != null && (
+                  <ReferenceArea
+                    x1={Math.min(refAreaLeft, refAreaRight)}
+                    x2={Math.max(refAreaLeft, refAreaRight)}
+                    y1={Math.min(refAreaTop, refAreaBottom)}
+                    y2={Math.max(refAreaTop, refAreaBottom)}
+                    stroke="rgba(59,130,246,0.6)"
+                    fill="rgba(59,130,246,0.08)"
+                    strokeWidth={1}
+                    strokeDasharray="3,3"
+                  />
+                )}
+
+                {/* Scatter plot for all models */}
+                <Scatter
+                  name="Models"
+                  data={scatterData}
+                  shape={renderDot}
+                />
+
+                {/* Pareto frontier line */}
+                {paretoData.length >= 2 && (
+                  <Line
+                    type="linear"
+                    dataKey="y"
+                    data={paretoData}
+                    stroke="#40b841"
+                    strokeWidth={2.5}
+                    dot={(props) => {
+                      const { cx, cy, payload } = props;
+                      if (cx == null || cy == null || !payload?.provider) return null;
+                      return (
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={5}
+                          fill={PROVIDER_COLORS[payload.provider as Provider]}
+                          strokeWidth={0}
+                        />
+                      );
+                    }}
+                    isAnimationActive={false}
+                  />
+                )}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </div>
     </div>
