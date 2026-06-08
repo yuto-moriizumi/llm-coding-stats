@@ -220,29 +220,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     [filteredModels],
   );
 
-  // Prepare scatter data
-  const scatterData = useMemo(
-    () =>
-      filteredModels.map((model) => ({
-        x: blendedPrice(model),
-        y: model.arenaScore,
-        ...model,
-      })),
-    [filteredModels],
-  );
-
-  // Prepare pareto line data (without extensions for simplicity)
-  const paretoData = useMemo(
-    () =>
-      paretoFrontier.map((model) => ({
-        x: blendedPrice(model),
-        y: model.arenaScore,
-        ...model,
-      })),
-    [paretoFrontier],
-  );
-
-  // Auto-compute price axis max from filtered data (with 30% margin,
+  // Auto-compute price axis max from filtered data (with 10% margin,
   // snapped to the next available tick value)
   const priceMax = useMemo(() => {
     if (filteredModels.length === 0)
@@ -265,6 +243,44 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     if (zoomDomain) return [zoomDomain.y1, zoomDomain.y2];
     return [SCORE_MIN, SCORE_MAX];
   }, [zoomDomain]);
+
+  // Prepare scatter data (filtered to visible zoom domain)
+  const scatterData = useMemo(
+    () =>
+      filteredModels
+        .map((model) => ({
+          x: blendedPrice(model),
+          y: model.arenaScore,
+          ...model,
+        }))
+        .filter(
+          (p) =>
+            p.x >= xDomain[0] &&
+            p.x <= xDomain[1] &&
+            p.y >= yDomain[0] &&
+            p.y <= yDomain[1]
+        ),
+    [filteredModels, xDomain, yDomain]
+  );
+
+  // Prepare pareto line data (filtered to visible zoom domain)
+  const paretoData = useMemo(
+    () =>
+      paretoFrontier
+        .map((model) => ({
+          x: blendedPrice(model),
+          y: model.arenaScore,
+          ...model,
+        }))
+        .filter(
+          (p) =>
+            p.x >= xDomain[0] &&
+            p.x <= xDomain[1] &&
+            p.y >= yDomain[0] &&
+            p.y <= yDomain[1]
+        ),
+    [paretoFrontier, xDomain, yDomain]
+  );
 
   // ── Mouse interaction for zoom ──
   const getDataCoordinate = useCallback((e: MouseEvent): { x: number; y: number } | null => {
