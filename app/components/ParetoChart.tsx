@@ -490,7 +490,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     const currentX2 = zoomDomain?.x2 ?? priceMax;
     const currentY1 = zoomDomain?.y1 ?? SCORE_MIN;
     const currentY2 = zoomDomain?.y2 ?? SCORE_MAX;
-    const zoomFactor = 0.7;
+    const zoomFactor = 0.95;
     const centerX = (currentX1 + currentX2) / 2;
     const centerY = (currentY1 + currentY2) / 2;
     const newXRange = (currentX2 - currentX1) * zoomFactor;
