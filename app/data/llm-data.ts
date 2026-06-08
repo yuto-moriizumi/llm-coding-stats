@@ -8,6 +8,8 @@ export interface LLMModel {
   outputPrice: number;
   /** Throughput (tokens per second) - optional, not always available */
   throughput?: number;
+  /** Whether the model has been deprecated by the provider */
+  deprecated?: boolean;
 }
 
 export type Provider =
@@ -163,7 +165,7 @@ export const LLM_MODELS: LLMModel[] = [
   // ── Xiaomi (MiMo) ─────────────────────────────────────────
   { name: "mimo-v2.5-pro", provider: "xiaomi", arenaScore: 1466, inputPrice: 0.43, outputPrice: 0.87 },
   { name: "mimo-v2.5", provider: "xiaomi", arenaScore: 1436, inputPrice: 0.14, outputPrice: 0.28 },
-  { name: "mimo-v2-pro", provider: "xiaomi", arenaScore: 1433, inputPrice: 1, outputPrice: 3 },
+  { name: "mimo-v2-pro", provider: "xiaomi", arenaScore: 1433, inputPrice: 1, outputPrice: 3, deprecated: true },
   { name: "mimo-v2-flash", provider: "xiaomi", arenaScore: 1337, inputPrice: 0.1, outputPrice: 0.3 },
   { name: "mimo-v2-flash-thinking", provider: "xiaomi", arenaScore: 1301, inputPrice: 0.1, outputPrice: 0.3 },
 

@@ -70,6 +70,11 @@ function CustomTooltip({ active, hoveredModel }: CustomTooltipProps) {
     <div className="rounded-lg border border-white/10 bg-gray-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur-sm">
       <div className="mb-2 font-medium text-gray-100">
         {hoveredModel.name} — ${blendedPrice(hoveredModel).toFixed(2)}/1M
+        {hoveredModel.deprecated && (
+          <span className="ml-2 rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-400">
+            Deprecated
+          </span>
+        )}
       </div>
       <div className="flex flex-col gap-0.5 text-gray-400">
         <span>
@@ -138,6 +143,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     new Set(),
   );
   const [minThroughput, setMinThroughput] = useState<number>(0);
+  const [showDeprecated, setShowDeprecated] = useState<boolean>(false);
 
   // ── Zoom state ──
   const [zoomDomain, setZoomDomain] = useState<{
@@ -189,8 +195,11 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     if (minThroughput > 0) {
       result = result.filter((m) => m.throughput == null || m.throughput >= minThroughput);
     }
+    if (!showDeprecated) {
+      result = result.filter((m) => !m.deprecated);
+    }
     return result;
-  }, [models, selectedProviders, minThroughput]);
+  }, [models, selectedProviders, minThroughput, showDeprecated]);
 
   // Compute pareto frontier
   const paretoFrontier = useMemo(
@@ -679,6 +688,19 @@ export default function ParetoChart({ models }: ParetoChartProps) {
             ≥{minThroughput} tok/s
           </span>
         )}
+      </div>
+
+      {/* Deprecated model toggle */}
+      <div className="mb-3 flex items-center gap-2">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-400 transition-colors hover:text-gray-300">
+          <input
+            type="checkbox"
+            checked={showDeprecated}
+            onChange={(e) => setShowDeprecated(e.target.checked)}
+            className="h-3.5 w-3.5 rounded border-white/20 bg-gray-800 text-blue-500 accent-blue-500"
+          />
+          Show deprecated models
+        </label>
       </div>
 
       {/* Zoom controls */}
