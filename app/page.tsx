@@ -1,18 +1,30 @@
 import ParetoChart from "./components/ParetoChart";
 import { LLM_MODELS, type LLMModel } from "./data/llm-data";
-import { fetchThroughputMap } from "./lib/openrouter";
+import { fetchThroughputMap, fetchPricingMap } from "./lib/openrouter";
 
 async function getEnrichedModels(): Promise<LLMModel[]> {
-  const throughputMap = await fetchThroughputMap();
-
-  if (throughputMap.size === 0) {
-    // API取得失敗時はハードコード値をそのまま使用
-    return LLM_MODELS;
-  }
+  const [throughputMap, pricingMap] = await Promise.all([
+    fetchThroughputMap(),
+    fetchPricingMap(),
+  ]);
 
   return LLM_MODELS.map((model) => {
+    const enriched: LLMModel = { ...model };
+
+    // Throughput
     const throughput = throughputMap.get(model.name);
-    return throughput != null ? { ...model, throughput } : model;
+    if (throughput != null) {
+      enriched.throughput = throughput;
+    }
+
+    // Pricing (API 側に値があれば上書き。存在しない場合はハードコード値を維持)
+    const pricing = pricingMap.get(model.name);
+    if (pricing != null) {
+      enriched.inputPrice = pricing.inputPrice;
+      enriched.outputPrice = pricing.outputPrice;
+    }
+
+    return enriched;
   });
 }
 
@@ -29,7 +41,7 @@ export default async function Home() {
         <p className="text-sm text-gray-500">
           Performance vs cost comparison across major LLM providers
           <span className="ml-1 text-gray-600">
-            (throughput: OpenRouter p50, 10min cache)
+            (throughput &amp; prices from OpenRouter, 10min cache)
           </span>
         </p>
       </header>
@@ -44,8 +56,8 @@ export default async function Home() {
         <div className="mx-auto max-w-6xl">
           <p className="text-xs text-gray-600">
             Arena scores are illustrative estimates based on public benchmarks.
-            Prices are per 1M tokens as of 2026. Throughput from OpenRouter
-            (p50, refreshed every 10 minutes).
+            Prices are per 1M tokens as of 2026. Throughput &amp; prices from
+            OpenRouter (refreshed every 10 minutes).
           </p>
         </div>
       </footer>

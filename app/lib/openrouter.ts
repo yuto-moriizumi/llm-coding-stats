@@ -1,4 +1,4 @@
-// OpenRouter frontend API — throughput (tokens/s) data fetching
+// OpenRouter frontend API — throughput (tokens/s) and pricing data fetching
 
 interface RoutingHeuristics {
   p50_throughput_2_hours?: number;
@@ -14,15 +14,28 @@ interface OpenRouterEndpoint {
   routing_heuristics?: RoutingHeuristics;
 }
 
+interface OpenRouterPricing {
+  prompt?: string;
+  completion?: string;
+}
+
 interface OpenRouterModel {
   slug: string;
+  id?: string;
   short_name: string;
   endpoint?: OpenRouterEndpoint;
   endpoints?: OpenRouterEndpoint[];
+  pricing?: OpenRouterPricing;
 }
 
 interface OpenRouterResponse {
   data: OpenRouterModel[];
+}
+
+/** モデルごとの pricing データ */
+export interface ModelPricing {
+  inputPrice: number;
+  outputPrice: number;
 }
 
 /**
@@ -219,6 +232,77 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
 
   cachedMap = result;
   cachedAt = now;
+
+  return result;
+}
+
+// ── Pricing キャッシュ ───────────────────────────────────────────
+let cachedPricingMap: Map<string, ModelPricing> | null = null;
+let cachedPricingAt = 0;
+const PRICING_CACHE_TTL_MS = 600_000; // 10分
+
+/**
+ * OpenRouter の全モデル一覧から pricing データを取得し、
+ * ローカルモデル名 → { inputPrice, outputPrice } の Map を返す。
+ *
+ * pricing の値は「1トークンあたりのUSD」なので、1Mトークン単位に変換する。
+ */
+export async function fetchPricingMap(): Promise<Map<string, ModelPricing>> {
+  const now = Date.now();
+  if (cachedPricingMap && now - cachedPricingAt < PRICING_CACHE_TTL_MS) {
+    return cachedPricingMap;
+  }
+
+  const pricingBySlug = new Map<string, ModelPricing>();
+
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/models");
+
+    if (!res.ok) {
+      console.error(
+        `[openrouter] Failed to fetch pricing: ${res.status} ${res.statusText}`,
+      );
+      return pricingBySlug;
+    }
+
+    const json: OpenRouterResponse = await res.json();
+
+    for (const model of json.data) {
+      const slug = model.id ?? model.slug;
+      const p = model.pricing;
+      if (!p) continue;
+
+      const promptStr = p.prompt;
+      const completionStr = p.completion;
+      if (!promptStr || !completionStr) continue;
+
+      const promptPrice = Number.parseFloat(promptStr);
+      const completionPrice = Number.parseFloat(completionStr);
+      if (
+        !Number.isNaN(promptPrice) &&
+        !Number.isNaN(completionPrice)
+      ) {
+        pricingBySlug.set(slug, {
+          inputPrice: Math.round(promptPrice * 1_000_000 * 100) / 100,
+          outputPrice: Math.round(completionPrice * 1_000_000 * 100) / 100,
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[openrouter] Error fetching pricing data:", err);
+  }
+
+  // ローカルモデル名 → pricing の Map に変換
+  const result = new Map<string, ModelPricing>();
+  for (const [localName, slug] of Object.entries(MODEL_NAME_TO_OPENROUTER_SLUG)) {
+    const pricing = pricingBySlug.get(slug);
+    if (pricing != null) {
+      result.set(localName, pricing);
+    }
+  }
+
+  cachedPricingMap = result;
+  cachedPricingAt = now;
 
   return result;
 }
