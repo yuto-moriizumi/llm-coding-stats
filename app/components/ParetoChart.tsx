@@ -121,16 +121,29 @@ function CustomDot({ cx, cy, payload, hoveredModel, onMouseEnter, onMouseLeave }
   const isHovered = hoveredModel?.name === payload.name;
 
   return (
-    <circle
-      cx={cx}
-      cy={cy}
-      r={isHovered ? 7 : 5}
-      fill={PROVIDER_COLORS[payload.provider]}
-      opacity={isHovered ? 1 : 0.7}
-      style={{ cursor: "pointer", transition: "all 150ms" }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    />
+    <g style={{ pointerEvents: "none" }}>
+      {/* White halo behind dot so line doesn't show through */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={isHovered ? 11 : 8}
+        fill="#ffffff"
+        opacity={isHovered ? 0.5 : 0.35}
+        style={{ pointerEvents: "none" }}
+      />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={isHovered ? 9 : 6}
+        fill={PROVIDER_COLORS[payload.provider]}
+        stroke="#ffffff"
+        strokeWidth={isHovered ? 3 : 2.5}
+        opacity={1}
+        style={{ cursor: "pointer", transition: "all 150ms", pointerEvents: "all" }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      />
+    </g>
   );
 }
 
@@ -812,7 +825,8 @@ export default function ParetoChart({ models }: ParetoChartProps) {
                   <Scatter
                     name="Pareto Frontier"
                     data={paretoData}
-                    line={{ stroke: '#40b841', strokeWidth: 2.5 }}
+                    zIndex={1}
+                    line={{ stroke: '#40b841', strokeWidth: 1.5, opacity: 0.8 }}
                     shape={() => null}
                     isAnimationActive={false}
                   />
@@ -822,6 +836,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
                 <Scatter
                   name="Models"
                   data={scatterData}
+                  zIndex={100}
                   shape={renderDot}
                 />
               </ComposedChart>
