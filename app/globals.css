@@ -35,6 +35,8 @@ body {
   cursor: pointer;
   border: 2px solid #1e3a5f;
   box-shadow: 0 0 4px rgba(59, 130, 246, 0.5);
+  /* Center the 18px thumb on the 6px track */
+  margin-top: -6px;
 }
 
 .throughput-slider::-moz-range-thumb {
@@ -45,6 +47,8 @@ body {
   cursor: pointer;
   border: 2px solid #1e3a5f;
   box-shadow: 0 0 4px rgba(59, 130, 246, 0.5);
+  /* Center the 18px thumb on the 6px track */
+  margin-top: -6px;
 }
 
 .throughput-slider::-webkit-slider-runnable-track {
