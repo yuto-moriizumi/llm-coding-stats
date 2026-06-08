@@ -554,7 +554,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
   }, [models]);
 
   // Preset throughput thresholds
-  const THROUGHPUT_PRESETS = [0, 30, 50, 100, 150];
+  const THROUGHPUT_PRESETS = [0, 30, 40, 50, 100, 150];
 
   const toggleProvider = (provider: Provider) => {
     setSelectedProviders((prev) => {
