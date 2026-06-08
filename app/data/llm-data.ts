@@ -179,14 +179,14 @@ export const LLM_MODELS: LLMModel[] = [
   { name: "grok-4.3", provider: "xai", arenaScore: 1371, inputPrice: 1.25, outputPrice: 2.5 },
   { name: "grok-4-1-fast", provider: "xai", arenaScore: 1234, inputPrice: 0.2, outputPrice: 0.5, deprecated: true },
   { name: "grok-4.1-thinking", provider: "xai", arenaScore: 1209, inputPrice: 0, outputPrice: 0, deprecated: true },
-  { name: "grok-4-fast", provider: "xai", arenaScore: 1150, inputPrice: 0.2, outputPrice: 0.5 },
-  { name: "grok-code-fast-1", provider: "xai", arenaScore: 1140, inputPrice: 0.2, outputPrice: 1.5 },
+  { name: "grok-4-fast", provider: "xai", arenaScore: 1150, inputPrice: 0.2, outputPrice: 0.5, deprecated: true },
+  { name: "grok-code-fast-1", provider: "xai", arenaScore: 1140, inputPrice: 0.2, outputPrice: 1.5, deprecated: true },
 
   // ── Mistral ────────────────────────────────────────────────
   { name: "mistral-medium-3.5", provider: "mistral", arenaScore: 1269, inputPrice: 1.5, outputPrice: 7.5 },
   { name: "mistral-large-3", provider: "mistral", arenaScore: 1223, inputPrice: 0.5, outputPrice: 1.5 },
   { name: "devstral-2", provider: "mistral", arenaScore: 1199, inputPrice: 0, outputPrice: 0 },
-  { name: "devstral-medium", provider: "mistral", arenaScore: 1092, inputPrice: 0.4, outputPrice: 2 },
+  { name: "devstral-medium", provider: "mistral", arenaScore: 1092, inputPrice: 0.4, outputPrice: 2, deprecated: true },
 
   // ── Tencent ────────────────────────────────────────────────
   { name: "hunyuan-hy3-preview", provider: "tencent", arenaScore: 1364, inputPrice: 0, outputPrice: 0 },

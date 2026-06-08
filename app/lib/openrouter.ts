@@ -155,13 +155,13 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "KAT-Coder-Pro-V1": "kwai/kat-coder-pro-v1",
 
   // ── IBM ────────────────────────────────────────────────────
-  "granite-4.1-8b": "ibm/granite-4.1-8b",
+  "granite-4.1-8b": "ibm-granite/granite-4.1-8b",
 
   // ── Arcee AI ──────────────────────────────────────────────
   "trinity-large-thinking": "arcee-ai/trinity-large-thinking",
 
   // ── Inception Labs ─────────────────────────────────────────
-  "mercury-2": "inceptionlabs/mercury-2",
+  "mercury-2": "inception/mercury-2",
 };
 
 // ISR キャッシュ: APIレスポンスが5MB超でNext.jsデータキャッシュの上限(2MB)を超えるため、
