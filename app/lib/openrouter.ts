@@ -47,8 +47,8 @@ export interface ModelPricing {
  */
 const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   // ─ Anthropic ──────────────────────────────────────────────
-  "claude-opus-4-7-thinking": "anthropic/claude-opus-4.7-fast",
-  "claude-opus-4-7": "anthropic/claude-opus-4.7-fast",
+  "claude-opus-4-7-thinking": "anthropic/claude-opus-4.7",
+  "claude-opus-4-7": "anthropic/claude-opus-4.7",
   "claude-opus-4-8-thinking": "anthropic/claude-opus-4.8",
   "claude-opus-4-8": "anthropic/claude-opus-4.8",
   "claude-opus-4-6-thinking": "anthropic/claude-opus-4.6",
