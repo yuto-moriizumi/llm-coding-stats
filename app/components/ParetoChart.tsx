@@ -420,7 +420,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
   }, [handleMouseMove, handleMouseUp]);
 
   // ── Wheel zoom ──
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+  const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     if (!chartWrapperRef.current) return;
     const svg = chartWrapperRef.current.querySelector("svg");
@@ -444,11 +444,16 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     const relX = (px - left) / plotWidth;
     const relY = (py - top) / plotHeight;
 
-    // Convert to data coordinates
-    const logMin = Math.log10(xDomain[0]);
-    const logMax = Math.log10(xDomain[1]);
-    const focusX = Math.pow(10, logMin + relX * (logMax - logMin));
-    const focusY = yDomain[1] - relY * (yDomain[1] - yDomain[0]);
+    // Convert to data coordinates using current zoom domain (or full domain)
+    const effectiveX1 = zoomDomain?.x1 ?? xDomain[0];
+    const effectiveX2 = zoomDomain?.x2 ?? xDomain[1];
+    const effectiveY1 = zoomDomain?.y1 ?? yDomain[0];
+    const effectiveY2 = zoomDomain?.y2 ?? yDomain[1];
+
+    const xLogMin = Math.log10(effectiveX1);
+    const xLogMax = Math.log10(effectiveX2);
+    const focusX = Math.pow(10, xLogMin + relX * (xLogMax - xLogMin));
+    const focusY = effectiveY2 - relY * (effectiveY2 - effectiveY1);
 
     const zoomFactor = e.deltaY < 0 ? 0.8 : 1.25;
     const currentX1 = zoomDomain?.x1 ?? PRICE_MIN;
@@ -469,8 +474,8 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     const newY2 = focusY + yRatio * newYRange;
 
     // Clamp to bounds
-    const clampedX1 = Math.max(Math.pow(10, Math.log10(newX1) - 1), PRICE_MIN);
-    const clampedX2 = Math.min(Math.pow(10, Math.log10(newX2) + 1), priceMax * 2);
+    const clampedX1 = Math.max(newX1, PRICE_MIN * 0.5);
+    const clampedX2 = Math.min(newX2, priceMax * 2);
     const clampedY1 = Math.max(newY1, SCORE_MIN - 50);
     const clampedY2 = Math.min(newY2, SCORE_MAX + 50);
 
@@ -525,6 +530,14 @@ export default function ParetoChart({ models }: ParetoChartProps) {
   const handleResetZoom = useCallback(() => {
     setZoomDomain(null);
   }, []);
+
+  // Register native wheel listener on container (chartWrapper may not exist on first render)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [handleWheel]);
 
   // Get all providers
   const providers = useMemo(() => {
@@ -703,7 +716,7 @@ export default function ParetoChart({ models }: ParetoChartProps) {
         className={`relative min-h-[400px] flex-1 overflow-hidden ${isSelecting ? "cursor-crosshair" : zoomDomain ? "cursor-grab" : "cursor-default"}`}
       >
         {containerSize.width > 0 && (
-          <div ref={chartWrapperRef} onMouseDown={handleMouseDown} onWheel={handleWheel}>
+          <div ref={chartWrapperRef} onMouseDown={handleMouseDown}>
             <ResponsiveContainer width="100%" height={chartHeight}>
               <ComposedChart margin={CHART_MARGIN}>
                 <CartesianGrid
