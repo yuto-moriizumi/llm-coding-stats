@@ -244,43 +244,18 @@ export default function ParetoChart({ models }: ParetoChartProps) {
     return [SCORE_MIN, SCORE_MAX];
   }, [zoomDomain]);
 
-  // Prepare scatter data (filtered to visible zoom domain)
-  const scatterData = useMemo(
-    () =>
-      filteredModels
-        .map((model) => ({
-          x: blendedPrice(model),
-          y: model.arenaScore,
-          ...model,
-        }))
-        .filter(
-          (p) =>
-            p.x >= xDomain[0] &&
-            p.x <= xDomain[1] &&
-            p.y >= yDomain[0] &&
-            p.y <= yDomain[1]
-        ),
-    [filteredModels, xDomain, yDomain]
-  );
-
-  // Prepare pareto line data (filtered to visible zoom domain)
-  const paretoData = useMemo(
-    () =>
-      paretoFrontier
-        .map((model) => ({
-          x: blendedPrice(model),
-          y: model.arenaScore,
-          ...model,
-        }))
-        .filter(
-          (p) =>
-            p.x >= xDomain[0] &&
-            p.x <= xDomain[1] &&
-            p.y >= yDomain[0] &&
-            p.y <= yDomain[1]
-        ),
-    [paretoFrontier, xDomain, yDomain]
-  );
+  // Scatter data: fixed array of all priced models. Hidden ones get NaN coordinates (Recharts skips NaN points).
+  const scatterInput = useMemo(() => {
+    const priced = models.filter((m) => m.inputPrice > 0 || m.outputPrice > 0);
+    const visibleNames = new Set(filteredModels.map((m) => m.name));
+    return priced.map((model) => {
+      if (!visibleNames.has(model.name)) {
+        // NaN causes scale.map(NaN) => null => cx/cy=null => dot skipped by Recharts
+        return { ...model, x: NaN, y: NaN };
+      }
+      return { ...model, x: blendedPrice(model), y: model.arenaScore };
+    });
+  }, [models, filteredModels]);
 
   // ── Mouse interaction for zoom ──
   const getDataCoordinate = useCallback((e: MouseEvent): { x: number; y: number } | null => {
@@ -821,10 +796,14 @@ export default function ParetoChart({ models }: ParetoChartProps) {
                 )}
 
                 {/* Pareto frontier line */}
-                {paretoData.length >= 2 && (
+                {paretoFrontier.length >= 2 && (
                   <Scatter
                     name="Pareto Frontier"
-                    data={paretoData}
+                    data={paretoFrontier.map((model) => ({
+                      x: blendedPrice(model),
+                      y: model.arenaScore,
+                      ...model,
+                    }))}
                     zIndex={1}
                     line={{ stroke: '#40b841', strokeWidth: 2.5, opacity: 0.8 }}
                     shape={() => null}
@@ -832,10 +811,10 @@ export default function ParetoChart({ models }: ParetoChartProps) {
                   />
                 )}
 
-                {/* Scatter plot for all models */}
+                {/* Scatter plot for all models — fixed array so Recharts animates by index correctly */}
                 <Scatter
                   name="Models"
-                  data={scatterData}
+                  data={scatterInput}
                   zIndex={100}
                   shape={renderDot}
                 />
