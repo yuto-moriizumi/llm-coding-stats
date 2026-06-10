@@ -62,3 +62,20 @@ body {
   border-radius: 3px;
   background: #374151;
 }
+
+/* Prevent white highlight / focus ring on Recharts SVG when clicking */
+.recharts-surface,
+.recharts-surface:focus,
+.recharts-surface:active,
+.recharts-layer,
+.recharts-layer:focus,
+.recharts-layer:active {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.recharts-layer,
+.recharts-layer * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
