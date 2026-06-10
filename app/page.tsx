@@ -1,6 +1,6 @@
-import ParetoChart from "./components/ParetoChart";
+import ChartSection from "./components/ChartSection";
 import { LLM_MODELS, type LLMModel } from "./data/llm-data";
-import { fetchThroughputMap, fetchPricingMap } from "./lib/openrouter";
+import { fetchThroughputMap, fetchPricingMap, fetchEndpointMap } from "./lib/openrouter";
 
 async function getEnrichedModels(): Promise<LLMModel[]> {
   const [throughputMap, pricingMap] = await Promise.all([
@@ -29,7 +29,10 @@ async function getEnrichedModels(): Promise<LLMModel[]> {
 }
 
 export default async function Home() {
-  const models = await getEnrichedModels();
+  const [models, endpointMap] = await Promise.all([
+    getEnrichedModels(),
+    fetchEndpointMap(),
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#0a0a0a]">
@@ -46,9 +49,9 @@ export default async function Home() {
         </p>
       </header>
 
-      {/* Main chart */}
+      {/* Main chart section */}
       <main className="flex w-full flex-1 flex-col px-4 py-2">
-        <ParetoChart models={models} />
+        <ChartSection models={models} endpointMap={endpointMap} />
       </main>
 
       {/* Footer */}

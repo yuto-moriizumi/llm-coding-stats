@@ -7,6 +7,8 @@ interface RoutingHeuristics {
   p75_throughput_30_minutes?: number;
   p90_throughput_30_minutes?: number;
   request_count?: number;
+  effective_prompt_price?: number;
+  effective_completion_price?: number;
 }
 
 interface CatalogEndpointModel {
@@ -34,6 +36,16 @@ interface CatalogResponse {
 export interface ModelPricing {
   inputPrice: number;
   outputPrice: number;
+}
+
+/** プロバイダ（エンドポイント）ごとのデータ */
+export interface EndpointData {
+  providerName: string;
+  providerSlug: string;
+  variant: string;
+  throughput: number;
+  inputPrice: number;   // effective prompt price per 1M tokens
+  outputPrice: number;  // effective completion price per 1M tokens
 }
 
 /**
@@ -196,9 +208,7 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
     const json: CatalogResponse = await res.json();
 
     // フォールバック対象をマッピングに含まれるモデルのみに限定
-    const targetSlugs = new Set<
-      string
-    >(Object.values(MODEL_NAME_TO_OPENROUTER_SLUG));
+    const targetSlugs = new Set<string>(Object.values(MODEL_NAME_TO_OPENROUTER_SLUG));
 
     for (const model of json.data) {
       const slug = model.slug;
@@ -281,6 +291,211 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
 
   cachedMap = result;
   cachedAt = now;
+
+  return result;
+}
+
+// ─── Endpoint キャッシュ ──────────────────────────────────────
+let cachedEndpointMap: Map<string, EndpointData[]> | null = null;
+let cachedEndpointAt = 0;
+const ENDPOINT_CACHE_TTL_MS = 600_000; // 10分
+
+interface EndpointRawInfo {
+  providerName: string;
+  providerSlug: string;
+  variant: string;
+  inputPrice: number;
+  outputPrice: number;
+  /** providerName + "::" + providerSlug で stats API とマッチングする */
+  key: string;
+}
+
+interface EndpointsInfo {
+  localName: string;
+  slug: string;
+  permaslug: string;
+  infoList: EndpointRawInfo[];
+}
+
+/**
+ * stats/endpoint API から各エンドポイントのスループットを取得し、
+ * providerName + "::" + providerSlug のキー → throughput の Map を返す。
+ */
+async function fetchEndpointThroughputMap(
+  permaslug: string,
+): Promise<Map<string, number>> {
+  try {
+    const res = await fetch(
+      `https://openrouter.ai/api/frontend/v1/stats/endpoint?permaslug=${encodeURIComponent(permaslug)}&variant=standard`,
+      { signal: AbortSignal.timeout(8000), next: { revalidate: 600 } },
+    );
+    if (!res.ok) {
+      if (res.status !== 404) {
+        console.warn(
+          `[openrouter] Stats endpoint fetch failed for ${permaslug}: ${res.status}`,
+        );
+      }
+      return new Map();
+    }
+    const json = await res.json();
+    const result = new Map<string, number>();
+    for (const item of json.data ?? []) {
+      // stats API はルートレベルに provider_name / provider_slug を持つ
+      const providerName =
+        (item.provider_name as string) ??
+        (item.provider_info?.name as string) ??
+        "";
+      const providerSlug =
+        (item.provider_slug as string) ??
+        (item.provider_info?.slug as string) ??
+        "";
+      if (!providerName || !providerSlug) continue;
+
+      const rh = (item.routing_heuristics ?? {}) as RoutingHeuristics;
+      const stats = item.stats;
+
+      let throughput: number | null = null;
+      if (rh) {
+        throughput = rh.p50_throughput_2_hours ?? rh.p50_throughput ?? null;
+      }
+      if (throughput == null && stats) {
+        throughput = stats.p50_throughput ?? null;
+      }
+      if (throughput != null) {
+        const key = `${providerName}::${providerSlug}`;
+        result.set(key, Math.round(throughput));
+      }
+    }
+    return result;
+  } catch (err) {
+    console.error(
+      `[openrouter] Error fetching endpoint throughput for ${permaslug}:`,
+      err,
+    );
+    return new Map();
+  }
+}
+
+/**
+ * OpenRouter から各モデルの全プロバイダ（エンドポイント）情報を取得する。
+ * スループットはモデルレベルの catalaog/stats ではなく、
+ * stats/endpoint API のエンドポイント個別値を使用する。
+ */
+export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
+  const now = Date.now();
+  if (cachedEndpointMap && now - cachedEndpointAt < ENDPOINT_CACHE_TTL_MS) {
+    return cachedEndpointMap;
+  }
+
+  const result = new Map<string, EndpointData[]>();
+  const entries = Object.entries(MODEL_NAME_TO_OPENROUTER_SLUG);
+  const BATCH_SIZE = 5;
+
+  for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+    const batch = entries.slice(i, i + BATCH_SIZE);
+
+    // 1) endpoints API で基本情報（プロバイダ・価格）を取得
+    const endpointsResults = await Promise.allSettled(
+      batch.map(async ([localName, slug]) => {
+        const res = await fetch(
+          `https://openrouter.ai/api/v1/models/${slug}/endpoints`,
+          { signal: AbortSignal.timeout(8000), next: { revalidate: 600 } },
+        );
+        if (!res.ok) return null;
+        const json = await res.json();
+        const eps = json?.data?.endpoints ?? [];
+        if (eps.length === 0) return null;
+
+        // permaslug を最初のエンドポイントの name から抽出
+        // "Provider | anthropic/claude-4.6-opus-20260205" → "anthropic/claude-4.6-opus-20260205"
+        const firstName = (eps[0].name as string) ?? "";
+        const parts = firstName.split(" | ");
+        const permaslug = parts.length > 1 ? parts[1] : "";
+
+        const infoList: EndpointRawInfo[] = [];
+        for (const ep of eps) {
+          const promptStr = ep.pricing?.prompt;
+          const completionStr = ep.pricing?.completion;
+          if (!promptStr || !completionStr) continue;
+
+          const promptPrice = Number.parseFloat(promptStr);
+          const completionPrice = Number.parseFloat(completionStr);
+          if (
+            Number.isNaN(promptPrice) ||
+            Number.isNaN(completionPrice)
+          ) {
+            continue;
+          }
+
+          const providerName = ep.provider_name ?? "unknown";
+          const tag = ep.tag ?? "unknown";
+          const variant = tag ? (tag.split("/").pop() ?? "standard") : "standard";
+
+          infoList.push({
+            providerName,
+            providerSlug: tag,
+            variant,
+            inputPrice: Math.round(promptPrice * 1_000_000 * 100) / 100,
+            outputPrice: Math.round(completionPrice * 1_000_000 * 100) / 100,
+            key: `${providerName}::${tag}`,
+          });
+        }
+
+        return { localName, slug, permaslug, infoList } as EndpointsInfo;
+      }),
+    );
+
+    // 2) 各モデルの permaslug に対して stats API を叩いて個別スループットを取得
+    const throughputMaps = new Map<string, Map<string, number>>();
+    const fulfilledResults = endpointsResults
+      .map((r, idx) => ({ result: r, idx }))
+      .filter(
+        (
+          item,
+        ): item is {
+          result: PromiseFulfilledResult<EndpointsInfo>;
+          idx: number;
+        } =>
+          item.result.status === "fulfilled" &&
+          item.result.value != null &&
+          item.result.value.permaslug.length > 0,
+      );
+
+    const statsPromises = fulfilledResults.map(async (item) => {
+      const throughputMap = await fetchEndpointThroughputMap(
+        item.result.value.permaslug,
+      );
+      return { localName: item.result.value.localName, throughputMap };
+    });
+
+    const statsResults = await Promise.allSettled(statsPromises);
+    for (const sr of statsResults) {
+      if (sr.status === "fulfilled") {
+        throughputMaps.set(sr.value.localName, sr.value.throughputMap);
+      }
+    }
+
+    // 3) 基本情報とスループットをマージして EndpointData を構築
+    for (const er of endpointsResults) {
+      if (er.status !== "fulfilled" || er.value == null) continue;
+      const info = er.value as EndpointsInfo;
+      if (info.infoList.length === 0) continue;
+
+      const throughputMapForModel = throughputMaps.get(info.localName) ?? new Map();
+      const endpoints: EndpointData[] = info.infoList.map((entry) => ({
+        providerName: entry.providerName,
+        providerSlug: entry.providerSlug,
+        variant: entry.variant,
+        throughput: throughputMapForModel.get(entry.key) ?? 0,
+        inputPrice: entry.inputPrice,
+        outputPrice: entry.outputPrice,
+      }));
+      result.set(info.localName, endpoints);
+    }
+  }
+
+  cachedEndpointMap = result;
+  cachedEndpointAt = now;
 
   return result;
 }
