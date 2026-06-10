@@ -439,71 +439,6 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
     };
   }, [handleMouseMove, handleMouseUp]);
 
-  // ── Wheel zoom ──
-  const handleWheel = useCallback((e: WheelEvent) => {
-    e.preventDefault();
-    if (!chartWrapperRef.current) return;
-    const svg = chartWrapperRef.current.querySelector("svg");
-    if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-
-    const left = CHART_MARGIN.left;
-    const right = CHART_MARGIN.right;
-    const top = CHART_MARGIN.top;
-    const bottom = CHART_MARGIN.bottom;
-
-    const plotWidth = rect.width - left - right;
-    const plotHeight = rect.height - top - bottom;
-
-    if (px < left || px > rect.width - right || py < top || py > rect.height - bottom) {
-      return;
-    }
-
-    const relX = (px - left) / plotWidth;
-    const relY = (py - top) / plotHeight;
-
-    // Convert to data coordinates using current zoom domain (or full domain)
-    const effectiveX1 = zoomDomain?.x1 ?? xDomain[0];
-    const effectiveX2 = zoomDomain?.x2 ?? xDomain[1];
-    const effectiveY1 = zoomDomain?.y1 ?? yDomain[0];
-    const effectiveY2 = zoomDomain?.y2 ?? yDomain[1];
-
-    const xLogMin = Math.log10(effectiveX1);
-    const xLogMax = Math.log10(effectiveX2);
-    const focusX = Math.pow(10, xLogMin + relX * (xLogMax - xLogMin));
-    const focusY = effectiveY2 - relY * (effectiveY2 - effectiveY1);
-
-    const zoomFactor = e.deltaY < 0 ? 0.8 : 1.25;
-    const currentX1 = zoomDomain?.x1 ?? PRICE_MIN;
-    const currentX2 = zoomDomain?.x2 ?? priceMax;
-    const currentY1 = zoomDomain?.y1 ?? SCORE_MIN;
-    const currentY2 = zoomDomain?.y2 ?? SCORE_MAX;
-
-    // Zoom X centered on focus
-    const xRatio = (focusX - currentX1) / (currentX2 - currentX1);
-    const newXRange = (currentX2 - currentX1) * zoomFactor;
-    const newX1 = focusX - xRatio * newXRange;
-    const newX2 = focusX + (1 - xRatio) * newXRange;
-
-    // Zoom Y centered on focus
-    const yRatio = (currentY2 - focusY) / (currentY2 - currentY1);
-    const newYRange = (currentY2 - currentY1) * zoomFactor;
-    const newY1 = focusY - (1 - yRatio) * newYRange;
-    const newY2 = focusY + yRatio * newYRange;
-
-    // Clamp to bounds
-    const clampedX1 = Math.max(newX1, PRICE_MIN * 0.5);
-    const clampedX2 = Math.min(newX2, priceMax * 2);
-    const clampedY1 = Math.max(newY1, SCORE_MIN - 50);
-    const clampedY2 = Math.min(newY2, SCORE_MAX + 50);
-
-    if (clampedX1 < clampedX2 && clampedY1 < clampedY2) {
-      setZoomDomain({ x1: clampedX1, x2: clampedX2, y1: clampedY1, y2: clampedY2 });
-    }
-  }, [xDomain, yDomain, zoomDomain, priceMax]);
-
   // ── Zoom buttons ──
   const handleZoomIn = useCallback(() => {
     const currentX1 = zoomDomain?.x1 ?? PRICE_MIN;
@@ -550,14 +485,6 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
   const handleResetZoom = useCallback(() => {
     setZoomDomain(null);
   }, []);
-
-  // Register native wheel listener on container (chartWrapper may not exist on first render)
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
-  }, [handleWheel]);
 
   // Get all providers
   const providers = useMemo(() => {
@@ -741,7 +668,7 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
           </button>
         )}
         <span className="ml-1 text-[11px] text-gray-500">
-          {zoomDomain ? "Drag to pan • Scroll to zoom • Click without zoom → select area" : "Drag to select area • Scroll wheel • Zoom-out to unselect"}
+          {zoomDomain ? "Drag to pan • Click without zoom → select area" : "Drag to select area • Zoom-out to unselect"}
         </span>
       </div>
 
