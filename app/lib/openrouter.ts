@@ -9,28 +9,25 @@ interface RoutingHeuristics {
   request_count?: number;
 }
 
-interface OpenRouterEndpoint {
-  provider_slug?: string;
-  routing_heuristics?: RoutingHeuristics;
-}
-
-interface OpenRouterPricing {
-  prompt?: string;
-  completion?: string;
-}
-
-interface OpenRouterModel {
+interface CatalogEndpointModel {
   slug: string;
-  id?: string;
-  short_name: string;
-  endpoint?: OpenRouterEndpoint;
-  endpoints?: OpenRouterEndpoint[];
-  pricing?: OpenRouterPricing;
   permaslug?: string;
 }
 
-interface OpenRouterResponse {
-  data: OpenRouterModel[];
+interface CatalogEndpoint {
+  routing_heuristics?: RoutingHeuristics;
+  model?: CatalogEndpointModel;
+}
+
+interface CatalogModel {
+  slug: string;
+  short_name: string;
+  permaslug?: string;
+  endpoint?: CatalogEndpoint;
+}
+
+interface CatalogResponse {
+  data: CatalogModel[];
 }
 
 /** モデルごとの pricing データ */
@@ -187,7 +184,7 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
   const missingEntries: { slug: string; permaslug?: string }[] = [];
 
   try {
-    const res = await fetch("https://openrouter.ai/api/frontend/models");
+    const res = await fetch("https://openrouter.ai/api/frontend/v1/catalog/models");
 
     if (!res.ok) {
       console.error(
@@ -196,7 +193,7 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
       return throughputBySlug;
     }
 
-    const json: OpenRouterResponse = await res.json();
+    const json: CatalogResponse = await res.json();
 
     // フォールバック対象をマッピングに含まれるモデルのみに限定
     const targetSlugs = new Set<
@@ -205,24 +202,24 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
 
     for (const model of json.data) {
       const slug = model.slug;
-      const endpoints = model.endpoints ?? [];
-      if (model.endpoint) {
-        endpoints.push(model.endpoint);
-      }
+      const ep = model.endpoint;
+      const rh = ep?.routing_heuristics;
 
-      // 全エンドポイントから最大 throughput を取得
+      // endpoint.routing_heuristics から最大 throughput を取得
       let bestThroughput: number | undefined;
-      for (const ep of endpoints) {
-        const t = ep.routing_heuristics?.p50_throughput_2_hours;
-        if (t != null && (bestThroughput === undefined || t > bestThroughput)) {
+      if (rh) {
+        const t = rh.p50_throughput_2_hours ?? rh.p50_throughput;
+        if (t != null) {
           bestThroughput = t;
         }
       }
 
       if (bestThroughput != null) {
         throughputBySlug.set(slug, bestThroughput);
-      } else if (model.permaslug && targetSlugs.has(slug)) {
-        missingEntries.push({ slug, permaslug: model.permaslug });
+      } else if (targetSlugs.has(slug)) {
+        // permaslug を取得（モデルレベルまたは endpoint.model レベル）
+        const permaslug = model.permaslug ?? ep?.model?.permaslug;
+        missingEntries.push({ slug, permaslug });
       }
     }
   } catch (err) {
@@ -237,17 +234,30 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
       batch.map(async (entry) => {
         if (!entry.permaslug) return undefined;
         const res = await fetch(
-          `https://openrouter.ai/api/frontend/stats/endpoint?permaslug=${encodeURIComponent(entry.permaslug)}&variant=standard`,
+          `https://openrouter.ai/api/frontend/v1/stats/endpoint?permaslug=${encodeURIComponent(entry.permaslug)}&variant=standard`,
           { signal: AbortSignal.timeout(5000), next: { revalidate: 600 } },
         );
         if (!res.ok) return undefined;
         const json = await res.json();
+        // 新APIでは data はエンドポイントの配列で、各エンドポイントが routing_heuristics を持つ
         const endpoints = json.data ?? [];
         let bestThroughput: number | undefined;
         for (const ep of endpoints) {
-          const t = ep.stats?.p50_throughput;
-          if (t != null && (bestThroughput === undefined || t > bestThroughput)) {
-            bestThroughput = t;
+          // routing_heuristics をチェック
+          const rh = ep.routing_heuristics;
+          if (rh) {
+            const t = rh.p50_throughput_2_hours ?? rh.p50_throughput;
+            if (t != null && (bestThroughput === undefined || t > bestThroughput)) {
+              bestThroughput = t;
+            }
+          }
+          // routing_heuristics がない場合は stats もチェック
+          const stats = ep.stats ?? ep.statsByTier?.default;
+          if (stats) {
+            const t = stats.p50_throughput;
+            if (t != null && (bestThroughput === undefined || t > bestThroughput)) {
+              bestThroughput = t;
+            }
           }
         }
         return { slug: entry.slug, throughput: bestThroughput };
@@ -280,6 +290,20 @@ let cachedPricingMap: Map<string, ModelPricing> | null = null;
 let cachedPricingAt = 0;
 const PRICING_CACHE_TTL_MS = 600_000; // 10分
 
+// v1/models API のレスポンス型
+interface V1Model {
+  id?: string;
+  slug?: string;
+  pricing?: {
+    prompt?: string;
+    completion?: string;
+  };
+}
+
+interface V1ModelsResponse {
+  data: V1Model[];
+}
+
 /**
  * OpenRouter の全モデル一覧から pricing データを取得し、
  * ローカルモデル名 → { inputPrice, outputPrice } の Map を返す。
@@ -304,10 +328,11 @@ export async function fetchPricingMap(): Promise<Map<string, ModelPricing>> {
       return pricingBySlug;
     }
 
-    const json: OpenRouterResponse = await res.json();
+    const json: V1ModelsResponse = await res.json();
 
     for (const model of json.data) {
       const slug = model.id ?? model.slug;
+      if (!slug) continue;
       const p = model.pricing;
       if (!p) continue;
 
