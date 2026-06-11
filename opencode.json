@@ -7,7 +7,7 @@
         "moonshotai/kimi-k2.6": {
           "options": {
             "provider": {
-              "order": ["decart"],
+              "order": ["wandb", "ambient"],
               "allow_fallbacks": false
             }
           }

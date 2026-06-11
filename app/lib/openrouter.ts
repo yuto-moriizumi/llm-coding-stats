@@ -318,13 +318,22 @@ interface EndpointsInfo {
   infoList: EndpointRawInfo[];
 }
 
+interface EndpointStats {
+  throughput: number;
+  inputPrice?: number;
+  outputPrice?: number;
+}
+
 /**
- * stats/endpoint API から各エンドポイントのスループットを取得し、
- * providerName + "::" + providerSlug のキー → throughput の Map を返す。
+ * stats/endpoint API から各エンドポイントのスループットと実効価格を取得し、
+ * providerName + "::" + providerSlug のキー → stats の Map を返す。
+ *
+ * 実効価格（effective_prompt_price / effective_completion_price）は
+ * プロンプトキャッシュ適用後の実際の価格であり、リスト価格より正確。
  */
-async function fetchEndpointThroughputMap(
+async function fetchEndpointStatsMap(
   permaslug: string,
-): Promise<Map<string, number>> {
+): Promise<Map<string, EndpointStats>> {
   try {
     const res = await fetch(
       `https://openrouter.ai/api/frontend/v1/stats/endpoint?permaslug=${encodeURIComponent(permaslug)}&variant=standard`,
@@ -339,7 +348,7 @@ async function fetchEndpointThroughputMap(
       return new Map();
     }
     const json = await res.json();
-    const result = new Map<string, number>();
+    const result = new Map<string, EndpointStats>();
     for (const item of json.data ?? []) {
       // stats API はルートレベルに provider_name / provider_slug を持つ
       const providerName =
@@ -362,15 +371,34 @@ async function fetchEndpointThroughputMap(
       if (throughput == null && stats) {
         throughput = stats.p50_throughput ?? null;
       }
-      if (throughput != null) {
-        const key = `${providerName}::${providerSlug}`;
-        result.set(key, Math.round(throughput));
+
+      const effectivePromptPrice = rh?.effective_prompt_price;
+      const effectiveCompletionPrice = rh?.effective_completion_price;
+
+      const key = `${providerName}::${providerSlug}`;
+
+      if (
+        throughput != null ||
+        effectivePromptPrice != null ||
+        effectiveCompletionPrice != null
+      ) {
+        result.set(key, {
+          throughput: throughput != null ? Math.round(throughput) : 0,
+          inputPrice:
+            effectivePromptPrice != null
+              ? Math.round(effectivePromptPrice * 1_000_000 * 100) / 100
+              : undefined,
+          outputPrice:
+            effectiveCompletionPrice != null
+              ? Math.round(effectiveCompletionPrice * 1_000_000 * 100) / 100
+              : undefined,
+        });
       }
     }
     return result;
   } catch (err) {
     console.error(
-      `[openrouter] Error fetching endpoint throughput for ${permaslug}:`,
+      `[openrouter] Error fetching endpoint stats for ${permaslug}:`,
       err,
     );
     return new Map();
@@ -446,8 +474,8 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
       }),
     );
 
-    // 2) 各モデルの permaslug に対して stats API を叩いて個別スループットを取得
-    const throughputMaps = new Map<string, Map<string, number>>();
+    // 2) 各モデルの permaslug に対して stats API を叩いて個別スループット＆実効価格を取得
+    const statsMaps = new Map<string, Map<string, EndpointStats>>();
     const fulfilledResults = endpointsResults
       .map((r, idx) => ({ result: r, idx }))
       .filter(
@@ -463,34 +491,37 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
       );
 
     const statsPromises = fulfilledResults.map(async (item) => {
-      const throughputMap = await fetchEndpointThroughputMap(
+      const statsMap = await fetchEndpointStatsMap(
         item.result.value.permaslug,
       );
-      return { localName: item.result.value.localName, throughputMap };
+      return { localName: item.result.value.localName, statsMap };
     });
 
     const statsResults = await Promise.allSettled(statsPromises);
     for (const sr of statsResults) {
       if (sr.status === "fulfilled") {
-        throughputMaps.set(sr.value.localName, sr.value.throughputMap);
+        statsMaps.set(sr.value.localName, sr.value.statsMap);
       }
     }
 
-    // 3) 基本情報とスループットをマージして EndpointData を構築
+    // 3) 基本情報とスループット・実効価格をマージして EndpointData を構築
     for (const er of endpointsResults) {
       if (er.status !== "fulfilled" || er.value == null) continue;
       const info = er.value as EndpointsInfo;
       if (info.infoList.length === 0) continue;
 
-      const throughputMapForModel = throughputMaps.get(info.localName) ?? new Map();
-      const endpoints: EndpointData[] = info.infoList.map((entry) => ({
-        providerName: entry.providerName,
-        providerSlug: entry.providerSlug,
-        variant: entry.variant,
-        throughput: throughputMapForModel.get(entry.key) ?? 0,
-        inputPrice: entry.inputPrice,
-        outputPrice: entry.outputPrice,
-      }));
+      const statsMapForModel = statsMaps.get(info.localName) ?? new Map<string, EndpointStats>();
+      const endpoints: EndpointData[] = info.infoList.map((entry) => {
+        const stats = statsMapForModel.get(entry.key);
+        return {
+          providerName: entry.providerName,
+          providerSlug: entry.providerSlug,
+          variant: entry.variant,
+          throughput: stats?.throughput ?? 0,
+          inputPrice: stats?.inputPrice ?? entry.inputPrice,
+          outputPrice: stats?.outputPrice ?? entry.outputPrice,
+        };
+      });
       result.set(info.localName, endpoints);
     }
   }
