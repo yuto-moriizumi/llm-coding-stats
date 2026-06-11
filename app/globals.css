@@ -67,11 +67,40 @@ body {
 .recharts-surface,
 .recharts-surface:focus,
 .recharts-surface:active,
+.recharts-surface:focus-visible,
 .recharts-layer,
 .recharts-layer:focus,
-.recharts-layer:active {
+.recharts-layer:active,
+.recharts-layer:focus-visible,
+.recharts-zIndex-layer,
+.recharts-zIndex-layer:focus,
+.recharts-zIndex-layer:active,
+.recharts-zIndex-layer:focus-visible,
+.recharts-wrapper,
+.recharts-wrapper:focus,
+.recharts-wrapper:active,
+.recharts-wrapper:focus-visible,
+svg:focus,
+svg:focus-visible {
   outline: none !important;
   -webkit-tap-highlight-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Remove SVG focus ring completely */
+svg[tabindex="0"]:focus,
+svg[tabindex="0"]:focus-visible,
+svg[tabindex="-1"]:focus,
+svg[tabindex="-1"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Universal SVG focus prevention */
+*[tabindex]:focus,
+*[tabindex]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .recharts-layer,

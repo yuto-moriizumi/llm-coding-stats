@@ -276,6 +276,21 @@ export default function ParetoChart({
     return () => observer.disconnect();
   }, []);
 
+  // Remove tabindex from Recharts SVG to prevent focus ring on click
+  useEffect(() => {
+    const svg = chartWrapperRef.current?.querySelector('svg');
+    if (!svg) return;
+    svg.setAttribute('tabindex', '-1');
+    
+    const handleMouseDown = (e: Event) => {
+      if (document.activeElement === svg) {
+        e.preventDefault();
+        svg.blur();
+      }
+    };
+    svg.addEventListener('mousedown', handleMouseDown);
+    return () => svg.removeEventListener('mousedown', handleMouseDown);
+  }, []);
   // Filter models by selected providers and minimum throughput (exclude $0 price models for log scale)
   const filteredModels = useMemo(() => {
     const priced = models.filter((m) => m.inputPrice > 0 || m.outputPrice > 0);
@@ -784,11 +799,12 @@ export default function ParetoChart({
         {containerSize.width > 0 && (
           <div
             ref={chartWrapperRef}
-            className="select-none"
+            className="select-none [&_svg]:outline-none [&_svg]:focus:outline-none"
+            style={{ outline: "none" }}
             onMouseDown={handleMouseDown}
           >
             <ResponsiveContainer width="100%" height={chartHeight}>
-              <ComposedChart margin={CHART_MARGIN}>
+              <ComposedChart margin={CHART_MARGIN} style={{ outline: "none" }} accessibilityLayer={false}>
                 <CartesianGrid
                   strokeDasharray="4,4"
                   stroke="rgba(255,255,255,0.12)"
