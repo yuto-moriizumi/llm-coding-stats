@@ -1,6 +1,5 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "openrouter/moonshotai/kimi-k2.6",
   "provider": {
     "openrouter": {
       "models": {
