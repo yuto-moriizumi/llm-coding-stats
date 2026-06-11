@@ -27,9 +27,6 @@ interface ParetoChartProps {
   onSelectModel?: (model: LLMModel) => void;
 }
 
-// ── Axis config ──────────────────────────────────────────────
-const PRICE_MIN = 0.05;
-
 // ── Chart margins (for label positioning) ────────────────────
 const CHART_MARGIN = { top: 8, right: 30, bottom: 40, left: 60 };
 

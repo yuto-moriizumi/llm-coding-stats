@@ -19,10 +19,6 @@ interface ThroughputPriceChartProps {
   modelName: string | null;
 }
 
-// ── Axis config ──────────────────────────────────────────────
-const PRICE_MIN = 0.01;
-const THROUGHPUT_MIN = 0;
-
 // ── Format helpers ───────────────────────────────────────────
 function formatPrice(price: number): string {
   if (price >= 1) return `$${price.toFixed(price >= 10 ? 0 : 1)}`;
