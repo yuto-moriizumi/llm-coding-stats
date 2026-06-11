@@ -79,20 +79,25 @@ function CustomTooltip({ active, hoveredModel }: CustomTooltipProps) {
       </div>
       <div className="flex flex-col gap-0.5 text-gray-400">
         <span>
-          <span className="text-gray-300">Arena:</span> {hoveredModel.arenaScore}
+          <span className="text-gray-300">Arena:</span>{" "}
+          {hoveredModel.arenaScore}
         </span>
         <span>
-          <span className="text-gray-300">Blended price:</span> ${blendedPrice(hoveredModel).toFixed(2)}/1M
+          <span className="text-gray-300">Blended price:</span> $
+          {blendedPrice(hoveredModel).toFixed(2)}/1M
         </span>
         <span>
-          <span className="text-gray-300">Input:</span> ${hoveredModel.inputPrice}/1M
+          <span className="text-gray-300">Input:</span> $
+          {hoveredModel.inputPrice}/1M
         </span>
         <span>
-          <span className="text-gray-300">Output:</span> ${hoveredModel.outputPrice}/1M
+          <span className="text-gray-300">Output:</span> $
+          {hoveredModel.outputPrice}/1M
         </span>
         {hoveredModel.throughput != null && (
           <span>
-            <span className="text-gray-300">Throughput:</span> {hoveredModel.throughput} tok/s
+            <span className="text-gray-300">Throughput:</span>{" "}
+            {hoveredModel.throughput} tok/s
           </span>
         )}
         <span className="mt-0.5 flex items-center gap-1">
@@ -119,13 +124,28 @@ interface CustomDotProps {
   onSelect?: (model: LLMModel) => void;
 }
 
-function CustomDot({ cx, cy, payload, hoveredModel, selectedModel, onMouseEnter, onMouseLeave, onSelect }: CustomDotProps) {
+function CustomDot({
+  cx,
+  cy,
+  payload,
+  hoveredModel,
+  selectedModel,
+  onMouseEnter,
+  onMouseLeave,
+  onSelect,
+}: CustomDotProps) {
   if (cx == null || cy == null || !payload) return null;
   const isHovered = hoveredModel?.name === payload.name;
   const isSelected = selectedModel?.name === payload.name;
 
   return (
-    <g style={{ pointerEvents: "none", userSelect: "none", WebkitUserSelect: "none" }}>
+    <g
+      style={{
+        pointerEvents: "none",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+      }}
+    >
       {/* White halo behind dot so line doesn't show through */}
       <circle
         cx={cx}
@@ -155,7 +175,11 @@ function CustomDot({ cx, cy, payload, hoveredModel, selectedModel, onMouseEnter,
         stroke="#ffffff"
         strokeWidth={isHovered || isSelected ? 2 : 1.5}
         opacity={1}
-        style={{ cursor: "pointer", transition: "all 150ms", pointerEvents: "all" }}
+        style={{
+          cursor: "pointer",
+          transition: "all 150ms",
+          pointerEvents: "all",
+        }}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         onMouseDown={(e) => e.stopPropagation()}
@@ -168,7 +192,10 @@ function CustomDot({ cx, cy, payload, hoveredModel, selectedModel, onMouseEnter,
   );
 }
 
-export default function ParetoChart({ models, onSelectModel }: ParetoChartProps) {
+export default function ParetoChart({
+  models,
+  onSelectModel,
+}: ParetoChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartWrapperRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -223,12 +250,15 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
 
   // Filter models by selected providers and minimum throughput (exclude $0 price models for log scale)
   const filteredModels = useMemo(() => {
-    const priced = models.filter(
-      (m) => m.inputPrice > 0 || m.outputPrice > 0,
-    );
-    let result = selectedProviders.size === 0 ? priced : priced.filter((m) => selectedProviders.has(m.provider));
+    const priced = models.filter((m) => m.inputPrice > 0 || m.outputPrice > 0);
+    let result =
+      selectedProviders.size === 0
+        ? priced
+        : priced.filter((m) => selectedProviders.has(m.provider));
     if (minThroughput > 0) {
-      result = result.filter((m) => m.throughput == null || m.throughput >= minThroughput);
+      result = result.filter(
+        (m) => m.throughput == null || m.throughput >= minThroughput,
+      );
     }
     if (!showDeprecated) {
       result = result.filter((m) => !m.deprecated);
@@ -245,8 +275,7 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
   // Auto-compute price axis max from filtered data (with 10% margin,
   // snapped to the next available tick value)
   const priceMax = useMemo(() => {
-    if (filteredModels.length === 0)
-      return PRICE_TICKS[PRICE_TICKS.length - 1];
+    if (filteredModels.length === 0) return PRICE_TICKS[PRICE_TICKS.length - 1];
     const maxPrice = Math.max(...filteredModels.map(blendedPrice));
     const target = maxPrice * 1.1;
     return (
@@ -280,61 +309,80 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
   }, [models, filteredModels]);
 
   // ── Mouse interaction for zoom ──
-  const getDataCoordinate = useCallback((e: MouseEvent): { x: number; y: number } | null => {
-    if (!chartWrapperRef.current) return null;
-    const svg = chartWrapperRef.current.querySelector("svg");
-    if (!svg) return null;
-    const rect = svg.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-
-    const left = CHART_MARGIN.left;
-    const right = CHART_MARGIN.right;
-    const top = CHART_MARGIN.top;
-    const bottom = CHART_MARGIN.bottom;
-
-    const plotWidth = rect.width - left - right;
-    const plotHeight = rect.height - top - bottom;
-
-    if (px < left || px > rect.width - right || py < top || py > rect.height - bottom) {
-      return null;
-    }
-
-    const relX = (px - left) / plotWidth;
-    const relY = (py - top) / plotHeight;
-
-    const logMin = Math.log10(xDomain[0]);
-    const logMax = Math.log10(xDomain[1]);
-    const x = Math.pow(10, logMin + relX * (logMax - logMin));
-    const y = yDomain[1] - relY * (yDomain[1] - yDomain[0]);
-    return { x, y };
-  }, [xDomain, yDomain]);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (zoomDomain) {
-      const svg = chartWrapperRef.current?.querySelector("svg");
-      if (!svg) return;
-      e.preventDefault();
+  const getDataCoordinate = useCallback(
+    (e: MouseEvent): { x: number; y: number } | null => {
+      if (!chartWrapperRef.current) return null;
+      const svg = chartWrapperRef.current.querySelector("svg");
+      if (!svg) return null;
       const rect = svg.getBoundingClientRect();
-      isPanningRef.current = true;
-      panStartPixelRef.current = { px: e.clientX - rect.left, py: e.clientY - rect.top };
-      panStartDomainRef.current = zoomDomain;
-      return;
-    }
-    const coords = getDataCoordinate(e.nativeEvent);
-    if (!coords) return;
-    e.preventDefault();
-    setIsSelecting(true);
-    setRefAreaLeft(coords.x);
-    setRefAreaRight(coords.x);
-    setRefAreaTop(coords.y);
-    setRefAreaBottom(coords.y);
-  }, [zoomDomain, getDataCoordinate]);
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+
+      const left = CHART_MARGIN.left;
+      const right = CHART_MARGIN.right;
+      const top = CHART_MARGIN.top;
+      const bottom = CHART_MARGIN.bottom;
+
+      const plotWidth = rect.width - left - right;
+      const plotHeight = rect.height - top - bottom;
+
+      if (
+        px < left ||
+        px > rect.width - right ||
+        py < top ||
+        py > rect.height - bottom
+      ) {
+        return null;
+      }
+
+      const relX = (px - left) / plotWidth;
+      const relY = (py - top) / plotHeight;
+
+      const logMin = Math.log10(xDomain[0]);
+      const logMax = Math.log10(xDomain[1]);
+      const x = Math.pow(10, logMin + relX * (logMax - logMin));
+      const y = yDomain[1] - relY * (yDomain[1] - yDomain[0]);
+      return { x, y };
+    },
+    [xDomain, yDomain],
+  );
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (zoomDomain) {
+        const svg = chartWrapperRef.current?.querySelector("svg");
+        if (!svg) return;
+        e.preventDefault();
+        const rect = svg.getBoundingClientRect();
+        isPanningRef.current = true;
+        panStartPixelRef.current = {
+          px: e.clientX - rect.left,
+          py: e.clientY - rect.top,
+        };
+        panStartDomainRef.current = zoomDomain;
+        return;
+      }
+      const coords = getDataCoordinate(e.nativeEvent);
+      if (!coords) return;
+      e.preventDefault();
+      setIsSelecting(true);
+      setRefAreaLeft(coords.x);
+      setRefAreaRight(coords.x);
+      setRefAreaTop(coords.y);
+      setRefAreaBottom(coords.y);
+    },
+    [zoomDomain, getDataCoordinate],
+  );
 
   // Convert pixel offset to data offset and apply to domain
   const applyPan = useCallback(
     (currentPixelX: number, currentPixelY: number) => {
-      if (!chartWrapperRef.current || !panStartDomainRef.current || !panStartPixelRef.current) return;
+      if (
+        !chartWrapperRef.current ||
+        !panStartDomainRef.current ||
+        !panStartPixelRef.current
+      )
+        return;
       const svg = chartWrapperRef.current.querySelector("svg");
       if (!svg) return;
       const rect = svg.getBoundingClientRect();
@@ -367,26 +415,34 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
       const clampedY1 = Math.max(newY1, SCORE_MIN - 100);
       const clampedY2 = Math.min(newY2, SCORE_MAX + 100);
 
-      setZoomDomain({ x1: clampedX1, x2: clampedX2, y1: clampedY1, y2: clampedY2 });
+      setZoomDomain({
+        x1: clampedX1,
+        x2: clampedX2,
+        y1: clampedY1,
+        y2: clampedY2,
+      });
     },
     [priceMax],
   );
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (isPanningRef.current && panStartPixelRef.current) {
-      const svg = chartWrapperRef.current?.querySelector("svg");
-      if (!svg) return;
-      const rect = svg.getBoundingClientRect();
-      applyPan(e.clientX - rect.left, e.clientY - rect.top);
-      return;
-    }
-    if (!isSelecting || refAreaLeft == null || refAreaTop == null) return;
-    const coords = getDataCoordinate(e);
-    if (!coords) return;
-    setRefAreaRight(coords.x);
-    setRefAreaTop(coords.y);
-    setRefAreaBottom(coords.y);
-  }, [isSelecting, refAreaLeft, refAreaTop, applyPan, getDataCoordinate]);
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (isPanningRef.current && panStartPixelRef.current) {
+        const svg = chartWrapperRef.current?.querySelector("svg");
+        if (!svg) return;
+        const rect = svg.getBoundingClientRect();
+        applyPan(e.clientX - rect.left, e.clientY - rect.top);
+        return;
+      }
+      if (!isSelecting || refAreaLeft == null || refAreaTop == null) return;
+      const coords = getDataCoordinate(e);
+      if (!coords) return;
+      setRefAreaRight(coords.x);
+      setRefAreaTop(coords.y);
+      setRefAreaBottom(coords.y);
+    },
+    [isSelecting, refAreaLeft, refAreaTop, applyPan, getDataCoordinate],
+  );
 
   const handleMouseUp = useCallback(() => {
     if (isPanningRef.current) {
@@ -395,7 +451,13 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
       panStartDomainRef.current = null;
       return;
     }
-    if (!isSelecting || refAreaLeft == null || refAreaRight == null || refAreaTop == null || refAreaBottom == null) {
+    if (
+      !isSelecting ||
+      refAreaLeft == null ||
+      refAreaRight == null ||
+      refAreaTop == null ||
+      refAreaBottom == null
+    ) {
       setIsSelecting(false);
       setRefAreaLeft(null);
       setRefAreaRight(null);
@@ -469,7 +531,12 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
     const newY1 = currentY1 - (currentY2 - currentY1) * 0.5;
     const newY2 = currentY2 + (currentY2 - currentY1) * 0.5;
 
-    if (newX1 <= PRICE_MIN && newX2 >= priceMax && newY1 <= SCORE_MIN && newY2 >= SCORE_MAX) {
+    if (
+      newX1 <= PRICE_MIN &&
+      newX2 >= priceMax &&
+      newY1 <= SCORE_MIN &&
+      newY2 >= SCORE_MAX
+    ) {
       setZoomDomain(null);
       return;
     }
@@ -495,9 +562,9 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
 
   // Compute throughput range from all models
   const throughputRange = useMemo(() => {
-    const values = models.map((m) => m.throughput).filter(
-      (t): t is number => t != null && t > 0,
-    );
+    const values = models
+      .map((m) => m.throughput)
+      .filter((t): t is number => t != null && t > 0);
     return { min: Math.min(...values), max: Math.max(...values) };
   }, [models]);
 
@@ -541,14 +608,10 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
   }, []);
 
   const maxHeight = Math.max(viewportHeight - 280, 300);
-  const chartHeight = Math.min(
-    Math.max(containerSize.height, 400),
-    maxHeight,
-  );
+  const chartHeight = Math.min(Math.max(containerSize.height, 400), maxHeight);
 
   return (
-      <div className="flex min-w-0 flex-1 flex-col p-2 sm:p-2">
-
+    <div className="flex min-w-0 flex-1 flex-col p-2 sm:p-2">
       {/* Provider filter chips */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         {providers.map((provider) => {
@@ -623,9 +686,7 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
           title={`Min throughput: ${minThroughput} tok/s`}
         />
         {minThroughput > 0 && (
-          <span className="text-sm text-gray-500">
-            ≥{minThroughput} tok/s
-          </span>
+          <span className="text-sm text-gray-500">≥{minThroughput} tok/s</span>
         )}
       </div>
 
@@ -668,7 +729,9 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
           </button>
         )}
         <span className="ml-1 text-[11px] text-gray-500">
-          {zoomDomain ? "Drag to pan • Click without zoom → select area" : "Drag to select area • Zoom-out to unselect"}
+          {zoomDomain
+            ? "Drag to pan • Click without zoom → select area"
+            : "Drag to select area • Zoom-out to unselect"}
         </span>
       </div>
 
@@ -678,7 +741,11 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
         className={`relative min-h-[400px] flex-1 select-none overflow-hidden ${isSelecting ? "cursor-crosshair" : zoomDomain ? "cursor-grab" : "cursor-default"}`}
       >
         {containerSize.width > 0 && (
-          <div ref={chartWrapperRef} className="select-none" onMouseDown={handleMouseDown}>
+          <div
+            ref={chartWrapperRef}
+            className="select-none"
+            onMouseDown={handleMouseDown}
+          >
             <ResponsiveContainer width="100%" height={chartHeight}>
               <ComposedChart margin={CHART_MARGIN}>
                 <CartesianGrid
@@ -691,7 +758,9 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
                   dataKey="x"
                   scale="log"
                   domain={[xDomain[0], xDomain[1]]}
-                  ticks={PRICE_TICKS.filter((t) => t >= xDomain[0] && t <= xDomain[1])}
+                  ticks={PRICE_TICKS.filter(
+                    (t) => t >= xDomain[0] && t <= xDomain[1],
+                  )}
                   tickFormatter={formatPrice}
                   tick={{ fill: "#eeeef0", fontSize: 13 }}
                   stroke="rgba(255,255,255,0.2)"
@@ -702,13 +771,16 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
                     fill: "#9ca3af",
                     fontSize: 13,
                   }}
+                  allowDataOverflow
                 />
 
                 <YAxis
                   type="number"
                   dataKey="y"
                   domain={[yDomain[0], yDomain[1]]}
-                  ticks={SCORE_TICKS.filter((t) => t >= yDomain[0] && t <= yDomain[1])}
+                  ticks={SCORE_TICKS.filter(
+                    (t) => t >= yDomain[0] && t <= yDomain[1],
+                  )}
                   tick={{ fill: "#eeeef0", fontSize: 13 }}
                   stroke="rgba(255,255,255,0.2)"
                   label={{
@@ -719,6 +791,7 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
                     fill: "#eeeef0",
                     fontSize: 14,
                   }}
+                  allowDataOverflow
                 />
 
                 <ZAxis range={[1, 1]} />
@@ -733,18 +806,22 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
                 />
 
                 {/* Selection area overlay */}
-                {isSelecting && refAreaLeft != null && refAreaRight != null && refAreaTop != null && refAreaBottom != null && (
-                  <ReferenceArea
-                    x1={Math.min(refAreaLeft, refAreaRight)}
-                    x2={Math.max(refAreaLeft, refAreaRight)}
-                    y1={Math.min(refAreaTop, refAreaBottom)}
-                    y2={Math.max(refAreaTop, refAreaBottom)}
-                    stroke="rgba(59,130,246,0.6)"
-                    fill="rgba(59,130,246,0.08)"
-                    strokeWidth={1}
-                    strokeDasharray="3,3"
-                  />
-                )}
+                {isSelecting &&
+                  refAreaLeft != null &&
+                  refAreaRight != null &&
+                  refAreaTop != null &&
+                  refAreaBottom != null && (
+                    <ReferenceArea
+                      x1={Math.min(refAreaLeft, refAreaRight)}
+                      x2={Math.max(refAreaLeft, refAreaRight)}
+                      y1={Math.min(refAreaTop, refAreaBottom)}
+                      y2={Math.max(refAreaTop, refAreaBottom)}
+                      stroke="rgba(59,130,246,0.6)"
+                      fill="rgba(59,130,246,0.08)"
+                      strokeWidth={1}
+                      strokeDasharray="3,3"
+                    />
+                  )}
 
                 {/* Pareto frontier line */}
                 {paretoFrontier.length >= 2 && (
@@ -756,7 +833,7 @@ export default function ParetoChart({ models, onSelectModel }: ParetoChartProps)
                       ...model,
                     }))}
                     zIndex={1}
-                    line={{ stroke: '#40b841', strokeWidth: 2.5, opacity: 0.8 }}
+                    line={{ stroke: "#40b841", strokeWidth: 2.5, opacity: 0.8 }}
                     shape={() => null}
                     isAnimationActive={false}
                   />
