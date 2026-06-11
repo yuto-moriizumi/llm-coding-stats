@@ -50,46 +50,44 @@ function computeParetoFrontier(endpoints: EndpointData[]): EndpointData[] {
   return frontier;
 }
 
-// ── Custom Tooltip ───────────────────────────────────────────
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: Array<{ payload?: ChartPoint }>;
-}
-
 interface ChartPoint extends EndpointData {
   x: number;
   y: number;
 }
 
-function CustomTooltip({ active, payload }: CustomTooltipProps) {
-  if (!active || !payload || payload.length === 0) return null;
-  const point = payload[0].payload;
-  if (!point) return null;
+// ── Custom Tooltip ───────────────────────────────────────────
+interface CustomTooltipProps {
+  active?: boolean;
+  hoveredPoint?: ChartPoint | null;
+}
 
-  const bp = blendedPrice(point);
+function CustomTooltip({ active, hoveredPoint }: CustomTooltipProps) {
+  if (!active || !hoveredPoint) return null;
+
+  const bp = blendedPrice(hoveredPoint);
 
   return (
     <div className="rounded-lg border border-white/10 bg-gray-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur-sm">
       <div className="mb-2 font-medium text-gray-100">
-        {point.providerName}
-        {point.variant !== "standard" && (
+        {hoveredPoint.providerName}
+        {hoveredPoint.variant !== "standard" && (
           <span className="ml-1.5 rounded bg-gray-700/50 px-1.5 py-0.5 text-[10px] text-gray-400">
-            {point.variant}
+            {hoveredPoint.variant}
           </span>
         )}
       </div>
       <div className="flex flex-col gap-0.5 text-gray-400">
         <span>
-          <span className="text-gray-300">Throughput:</span> {point.throughput} tok/s
+          <span className="text-gray-300">Throughput:</span> {hoveredPoint.throughput} tok/s
         </span>
         <span>
           <span className="text-gray-300">Blended price:</span> ${bp.toFixed(2)}/1M
         </span>
         <span>
-          <span className="text-gray-300">Input:</span> ${point.inputPrice.toFixed(2)}/1M
+          <span className="text-gray-300">Input:</span> ${hoveredPoint.inputPrice.toFixed(2)}/1M
         </span>
         <span>
-          <span className="text-gray-300">Output:</span> ${point.outputPrice.toFixed(2)}/1M
+          <span className="text-gray-300">Output:</span> ${hoveredPoint.outputPrice.toFixed(2)}/1M
         </span>
       </div>
     </div>
@@ -291,7 +289,8 @@ export default function ThroughputPriceChart({ endpoints, modelName }: Throughpu
             <ZAxis range={[1, 1]} />
 
             <Tooltip
-              content={<CustomTooltip />}
+              content={<CustomTooltip hoveredPoint={hoveredPoint} />}
+              active={hoveredPoint !== null}
               cursor={{
                 strokeDasharray: "3,3",
                 stroke: "rgba(255,255,255,0.3)",
