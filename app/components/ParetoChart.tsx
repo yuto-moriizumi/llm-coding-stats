@@ -25,6 +25,7 @@ interface ParetoChartProps {
   models: LLMModel[];
   selectedModel?: LLMModel | null;
   onSelectModel?: (model: LLMModel) => void;
+  priceRatio?: number;
 }
 
 // ── Chart margins (for label positioning) ────────────────────
@@ -49,8 +50,8 @@ function generateLinearTicks(min: number, max: number, count = 5): number[] {
 }
 
 // ── Pareto frontier computation ──────────────────────────────
-function computeParetoFrontier(models: LLMModel[]): LLMModel[] {
-  const sorted = [...models].sort((a, b) => blendedPrice(a) - blendedPrice(b));
+function computeParetoFrontier(models: LLMModel[], inputRatio: number = 3): LLMModel[] {
+  const sorted = [...models].sort((a, b) => blendedPrice(a, inputRatio) - blendedPrice(b, inputRatio));
   const frontier: LLMModel[] = [];
   let bestScore = -Infinity;
 
@@ -74,15 +75,16 @@ function formatPrice(price: number): string {
 interface CustomTooltipProps {
   active?: boolean;
   hoveredModel?: LLMModel | null;
+  priceRatio?: number;
 }
 
-function CustomTooltip({ active, hoveredModel }: CustomTooltipProps) {
+function CustomTooltip({ active, hoveredModel, priceRatio = 3 }: CustomTooltipProps) {
   if (!active || !hoveredModel) return null;
 
   return (
     <div className="rounded-lg border border-white/10 bg-gray-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur-sm">
       <div className="mb-2 font-medium text-gray-100">
-        {hoveredModel.name} — ${blendedPrice(hoveredModel).toFixed(2)}/1M
+        {hoveredModel.name} — ${blendedPrice(hoveredModel, priceRatio).toFixed(2)}/1M
         {hoveredModel.deprecated && (
           <span className="ml-2 rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-400">
             Deprecated
@@ -96,7 +98,7 @@ function CustomTooltip({ active, hoveredModel }: CustomTooltipProps) {
         </span>
         <span>
           <span className="text-gray-300">Blended price:</span> $
-          {blendedPrice(hoveredModel).toFixed(2)}/1M
+          {blendedPrice(hoveredModel, priceRatio).toFixed(2)}/1M
         </span>
         <span>
           <span className="text-gray-300">Input:</span> $
@@ -221,6 +223,7 @@ export default function ParetoChart({
   models,
   selectedModel: selectedModelProp,
   onSelectModel,
+  priceRatio = 3,
 }: ParetoChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartWrapperRef = useRef<HTMLDivElement>(null);
@@ -308,18 +311,18 @@ export default function ParetoChart({
 
   // Compute pareto frontier
   const paretoFrontier = useMemo(
-    () => computeParetoFrontier(filteredModels),
-    [filteredModels],
+    () => computeParetoFrontier(filteredModels, priceRatio),
+    [filteredModels, priceRatio],
   );
 
   // Auto-compute price axis range from filtered data (with 5% padding)
   const { priceMin, priceMax } = useMemo(() => {
     if (filteredModels.length === 0) return { priceMin: 0.01, priceMax: 10 };
-    const prices = filteredModels.map(blendedPrice);
+    const prices = filteredModels.map((m) => blendedPrice(m, priceRatio));
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     return { priceMin: min * 0.95, priceMax: max * 1.05 };
-  }, [filteredModels]);
+  }, [filteredModels, priceRatio]);
 
   // Auto-compute score range from filtered data
   const { scoreMin, scoreMax, scoreTicks } = useMemo(() => {
@@ -357,9 +360,9 @@ export default function ParetoChart({
         // NaN causes scale.map(NaN) => null => cx/cy=null => dot skipped by Recharts
         return { ...model, x: NaN, y: NaN };
       }
-      return { ...model, x: blendedPrice(model), y: model.arenaScore };
+      return { ...model, x: blendedPrice(model, priceRatio), y: model.arenaScore };
     });
-  }, [models, filteredModels]);
+  }, [models, filteredModels, priceRatio]);
 
   // ── Mouse interaction for zoom ──
   const getDataCoordinate = useCallback(
@@ -816,7 +819,7 @@ export default function ParetoChart({
                   tick={{ fill: "#eeeef0", fontSize: 13 }}
                   stroke="rgba(255,255,255,0.2)"
                   label={{
-                    value: "Blended price per 1M tokens (3:1 Ratio)",
+                    value: `Blended price per 1M tokens (${priceRatio}:1 Ratio)`,
                     position: "insideBottom",
                     offset: -10,
                     fill: "#9ca3af",
@@ -848,7 +851,7 @@ export default function ParetoChart({
                 <ZAxis range={[1, 1]} />
 
                 <Tooltip
-                  content={<CustomTooltip hoveredModel={hoveredModel} />}
+                  content={<CustomTooltip hoveredModel={hoveredModel} priceRatio={priceRatio} />}
                   active={hoveredModel !== null}
                   cursor={{
                     strokeDasharray: "3,3",
@@ -879,7 +882,7 @@ export default function ParetoChart({
                   <Scatter
                     name="Pareto Frontier"
                     data={paretoFrontier.map((model) => ({
-                      x: blendedPrice(model),
+                       x: blendedPrice(model, priceRatio),
                       y: model.arenaScore,
                       ...model,
                     }))}

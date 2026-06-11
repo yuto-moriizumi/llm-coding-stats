@@ -78,11 +78,11 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
 };
 
 /**
- * Blended price = (inputPrice * 3 + outputPrice * 1) / 4
- * Assumes 3:1 input:output ratio per 1M tokens.
+ * Blended price = (inputPrice * inputRatio + outputPrice * 1) / (inputRatio + 1)
+ * inputRatio defaults to 3 (3:1 input:output ratio per 1M tokens).
  */
-export function blendedPrice(model: LLMModel): number {
-  return (model.inputPrice * 3 + model.outputPrice * 1) / 4;
+export function blendedPrice(model: LLMModel, inputRatio: number = 3): number {
+  return (model.inputPrice * inputRatio + model.outputPrice * 1) / (inputRatio + 1);
 }
 
 export const LLM_MODELS: LLMModel[] = [

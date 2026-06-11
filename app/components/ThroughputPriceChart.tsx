@@ -17,6 +17,7 @@ import type { EndpointData } from "../lib/openrouter";
 interface ThroughputPriceChartProps {
   endpoints: EndpointData[] | null;
   modelName: string | null;
+  priceRatio?: number;
 }
 
 // ── Format helpers ───────────────────────────────────────────
@@ -25,14 +26,14 @@ function formatPrice(price: number): string {
   return `$${price.toFixed(2)}`;
 }
 
-function blendedPrice(ep: EndpointData): number {
-  return (ep.inputPrice * 3 + ep.outputPrice * 1) / 4;
+function blendedPrice(ep: EndpointData, inputRatio: number = 3): number {
+  return (ep.inputPrice * inputRatio + ep.outputPrice * 1) / (inputRatio + 1);
 }
 
 // ── Pareto frontier computation ──────────────────────────────
 // 価格が低く、スループットが高いものが最適（右上）
-function computeParetoFrontier(endpoints: EndpointData[]): EndpointData[] {
-  const sorted = [...endpoints].sort((a, b) => blendedPrice(a) - blendedPrice(b));
+function computeParetoFrontier(endpoints: EndpointData[], inputRatio: number = 3): EndpointData[] {
+  const sorted = [...endpoints].sort((a, b) => blendedPrice(a, inputRatio) - blendedPrice(b, inputRatio));
   const frontier: EndpointData[] = [];
   let bestThroughput = -Infinity;
 
@@ -55,12 +56,13 @@ interface ChartPoint extends EndpointData {
 interface CustomTooltipProps {
   active?: boolean;
   hoveredPoint?: ChartPoint | null;
+  priceRatio?: number;
 }
 
-function CustomTooltip({ active, hoveredPoint }: CustomTooltipProps) {
+function CustomTooltip({ active, hoveredPoint, priceRatio = 3 }: CustomTooltipProps) {
   if (!active || !hoveredPoint) return null;
 
-  const bp = blendedPrice(hoveredPoint);
+  const bp = blendedPrice(hoveredPoint, priceRatio);
 
   return (
     <div className="rounded-lg border border-white/10 bg-gray-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur-sm">
@@ -149,7 +151,7 @@ function generateLinearTicks(min: number, max: number, count = 5): number[] {
   return ticks;
 }
 
-export default function ThroughputPriceChart({ endpoints, modelName }: ThroughputPriceChartProps) {
+export default function ThroughputPriceChart({ endpoints, modelName, priceRatio = 3 }: ThroughputPriceChartProps) {
   const [hoveredPoint, setHoveredPoint] = useState<ChartPoint | null>(null);
 
   // Compute chart data and pareto frontier
@@ -167,16 +169,17 @@ export default function ThroughputPriceChart({ endpoints, modelName }: Throughpu
       .filter((ep) => ep.throughput != null && (ep.inputPrice > 0 || ep.outputPrice > 0))
       .map((ep) => ({
         ...ep,
-        x: blendedPrice(ep),
+        x: blendedPrice(ep, priceRatio),
         y: ep.throughput,
       }));
 
     const frontier = computeParetoFrontier(
       endpoints.filter((ep) => ep.inputPrice > 0 || ep.outputPrice > 0),
+      priceRatio,
     )
       .map((ep) => ({
         ...ep,
-        x: blendedPrice(ep),
+        x: blendedPrice(ep, priceRatio),
         y: ep.throughput,
       }));
 
@@ -195,7 +198,7 @@ export default function ThroughputPriceChart({ endpoints, modelName }: Throughpu
       priceDomain: [Math.max(0, minPrice - pPad), maxPrice + pPad] as [number, number],
       throughputDomain: [Math.max(0, minThroughput - tPad), maxThroughput + tPad] as [number, number],
     };
-  }, [endpoints]);
+  }, [endpoints, priceRatio]);
 
   // Auto-compute price ticks
   const priceTicks = useMemo(() => {
@@ -257,7 +260,7 @@ export default function ThroughputPriceChart({ endpoints, modelName }: Throughpu
               tick={{ fill: "#eeeef0", fontSize: 13 }}
               stroke="rgba(255,255,255,0.2)"
               label={{
-                value: "Effective blended price per 1M tokens (3:1 Ratio)",
+                value: `Effective blended price per 1M tokens (${priceRatio}:1 Ratio)`,
                 position: "insideBottom",
                 offset: -10,
                 fill: "#9ca3af",
@@ -285,7 +288,7 @@ export default function ThroughputPriceChart({ endpoints, modelName }: Throughpu
             <ZAxis range={[1, 1]} />
 
             <Tooltip
-              content={<CustomTooltip hoveredPoint={hoveredPoint} />}
+              content={<CustomTooltip hoveredPoint={hoveredPoint} priceRatio={priceRatio} />}
               active={hoveredPoint !== null}
               cursor={{
                 strokeDasharray: "3,3",
