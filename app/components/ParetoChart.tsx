@@ -622,7 +622,7 @@ export default function ParetoChart({
   }, [models]);
 
   // Preset throughput thresholds
-  const THROUGHPUT_PRESETS = [0, 30, 40, 50, 100, 150];
+  const THROUGHPUT_PRESETS = [0, 30, 40, 50, 100];
 
   const toggleProvider = (provider: Provider) => {
     setSelectedProviders((prev) => {
@@ -731,7 +731,7 @@ export default function ParetoChart({
         <input
           type="range"
           min={throughputRange.min}
-          max={throughputRange.max}
+          max={Math.min(throughputRange.max, 100)}
           step={1}
           value={minThroughput || throughputRange.min}
           onChange={(e) => setMinThroughput(Number(e.target.value))}
