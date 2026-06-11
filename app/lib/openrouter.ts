@@ -68,7 +68,8 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "claude-sonnet-4-5-thinking": "anthropic/claude-sonnet-4.5",
   "claude-opus-4-1": "anthropic/claude-opus-4.1",
   "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
-  "claude-haiku-4-5": "anthropic/claude-haiku-4.5",
+  "claude-haiku-4-5": "anthropic/claude-4.5-haiku-20251001",
+  "claude-fable-5": "anthropic/claude-fable-5",
 
   // ─ OpenAI ─────────────────────────────────────────────────
   "gpt-5.5-xhigh": "openai/gpt-5.5",

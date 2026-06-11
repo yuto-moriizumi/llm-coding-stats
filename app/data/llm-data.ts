@@ -100,6 +100,7 @@ export const LLM_MODELS: LLMModel[] = [
   { name: "claude-opus-4-1", provider: "anthropic", arenaScore: 1386, inputPrice: 15, outputPrice: 75 },
   { name: "claude-sonnet-4-5", provider: "anthropic", arenaScore: 1386, inputPrice: 3, outputPrice: 15 },
   { name: "claude-haiku-4-5", provider: "anthropic", arenaScore: 1324, inputPrice: 1, outputPrice: 5 },
+  { name: "claude-fable-5", provider: "anthropic", arenaScore: 1665, inputPrice: 10, outputPrice: 50 },
 
   // ── OpenAI ─────────────────────────────────────────────────
   { name: "gpt-5.5-xhigh", provider: "openai", arenaScore: 1502, inputPrice: 0, outputPrice: 0 },
