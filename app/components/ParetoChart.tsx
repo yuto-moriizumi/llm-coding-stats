@@ -23,6 +23,7 @@ import {
 // ── Props ────────────────────────────────────────────────────
 interface ParetoChartProps {
   models: LLMModel[];
+  selectedModel?: LLMModel | null;
   onSelectModel?: (model: LLMModel) => void;
 }
 
@@ -156,16 +157,28 @@ function CustomDot({
         style={{ pointerEvents: "none" }}
       />
       {isSelected && (
-        <circle
-          cx={cx}
-          cy={cy}
-          r={13}
-          fill="none"
-          stroke="#ffffff"
-          strokeWidth={2}
-          opacity={0.9}
-          style={{ pointerEvents: "none" }}
-        />
+        <>
+          {/* Large colored glow behind selected point */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={16}
+            fill={PROVIDER_COLORS[payload.provider]}
+            opacity={0.25}
+            style={{ pointerEvents: "none" }}
+          />
+          {/* White outline ring */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={13}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth={2.5}
+            opacity={0.95}
+            style={{ pointerEvents: "none" }}
+          />
+        </>
       )}
       <circle
         cx={cx}
@@ -179,6 +192,7 @@ function CustomDot({
           cursor: "pointer",
           transition: "all 150ms",
           pointerEvents: "all",
+          filter: isSelected ? "drop-shadow(0 0 4px rgba(255,255,255,0.8))" : undefined,
         }}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
@@ -194,13 +208,13 @@ function CustomDot({
 
 export default function ParetoChart({
   models,
+  selectedModel: selectedModelProp,
   onSelectModel,
 }: ParetoChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartWrapperRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [hoveredModel, setHoveredModel] = useState<LLMModel | null>(null);
-  const [selectedModel, setSelectedModel] = useState<LLMModel | null>(null);
   const [selectedProviders, setSelectedProviders] = useState<Set<Provider>>(
     new Set(),
   );
@@ -589,13 +603,13 @@ export default function ParetoChart({
       <CustomDot
         {...props}
         hoveredModel={hoveredModel}
-        selectedModel={selectedModel}
+        selectedModel={selectedModelProp ?? null}
         onMouseEnter={() => props.payload && setHoveredModel(props.payload)}
         onMouseLeave={() => setHoveredModel(null)}
         onSelect={onSelectModel}
       />
     ),
-    [hoveredModel, selectedModel, onSelectModel],
+    [hoveredModel, selectedModelProp, onSelectModel],
   );
 
   // Chart height based on container and viewport

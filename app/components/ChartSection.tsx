@@ -30,6 +30,7 @@ export default function ChartSection({ models, endpointMap }: ChartSectionProps)
       <div className="flex flex-1 flex-col rounded-lg border border-white/5 bg-[#0e0e0e]">
         <ParetoChart
           models={models}
+          selectedModel={selectedModel}
           onSelectModel={handleSelectModel}
         />
       </div>
