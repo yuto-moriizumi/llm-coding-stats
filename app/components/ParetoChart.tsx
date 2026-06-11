@@ -29,13 +29,27 @@ interface ParetoChartProps {
 
 // ── Axis config ──────────────────────────────────────────────
 const PRICE_MIN = 0.05;
-const SCORE_MIN = 1050;
-const SCORE_MAX = 1600;
-const PRICE_TICKS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
-const SCORE_TICKS = [1100, 1200, 1300, 1400, 1500, 1600];
 
 // ── Chart margins (for label positioning) ────────────────────
 const CHART_MARGIN = { top: 8, right: 30, bottom: 40, left: 60 };
+
+// ── Tick generation helper ───────────────────────────────────
+function generateLinearTicks(min: number, max: number, count = 5): number[] {
+  const range = max - min;
+  if (range === 0) return [min];
+  const step = Math.pow(10, Math.floor(Math.log10(range / count)));
+  const candidates = [step, step * 2, step * 2.5, step * 5, step * 10];
+  const niceStep = candidates.find((c) => c >= range / count) ?? step;
+  const start = Math.floor(min / niceStep) * niceStep;
+  const ticks: number[] = [];
+  for (let v = start; v <= max + niceStep; v += niceStep) {
+    if (v >= min && v <= max) ticks.push(v);
+  }
+  // Ensure min and max are covered
+  if (ticks[0] > min) ticks.unshift(min);
+  if (ticks[ticks.length - 1] < max) ticks.push(max);
+  return ticks;
+}
 
 // ── Pareto frontier computation ──────────────────────────────
 function computeParetoFrontier(models: LLMModel[]): LLMModel[] {
@@ -286,28 +300,41 @@ export default function ParetoChart({
     [filteredModels],
   );
 
-  // Auto-compute price axis max from filtered data (with 10% margin,
-  // snapped to the next available tick value)
-  const priceMax = useMemo(() => {
-    if (filteredModels.length === 0) return PRICE_TICKS[PRICE_TICKS.length - 1];
-    const maxPrice = Math.max(...filteredModels.map(blendedPrice));
-    const target = maxPrice * 1.1;
-    return (
-      PRICE_TICKS.find((t) => t >= target) ??
-      PRICE_TICKS[PRICE_TICKS.length - 1]
-    );
+  // Auto-compute price axis range from filtered data (with 5% padding)
+  const { priceMin, priceMax } = useMemo(() => {
+    if (filteredModels.length === 0) return { priceMin: 0.01, priceMax: 10 };
+    const prices = filteredModels.map(blendedPrice);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    return { priceMin: min * 0.95, priceMax: max * 1.05 };
+  }, [filteredModels]);
+
+  // Auto-compute score range from filtered data
+  const { scoreMin, scoreMax, scoreTicks } = useMemo(() => {
+    if (filteredModels.length === 0) {
+      return { scoreMin: 0, scoreMax: 100, scoreTicks: [0, 50, 100] };
+    }
+    const scores = filteredModels.map((m) => m.arenaScore);
+    const min = Math.min(...scores);
+    const max = Math.max(...scores);
+    const pad = (max - min) * 0.05;
+    return {
+      scoreMin: min - pad,
+      scoreMax: max + pad,
+      scoreTicks: generateLinearTicks(min - pad, max + pad),
+    };
   }, [filteredModels]);
 
   // Effective domain (zoom or full)
   const xDomain = useMemo<[number, number]>(() => {
     if (zoomDomain) return [zoomDomain.x1, zoomDomain.x2];
-    return [PRICE_MIN, priceMax];
-  }, [zoomDomain, priceMax]);
+    return [priceMin, priceMax];
+  }, [zoomDomain, priceMin, priceMax]);
 
   const yDomain = useMemo<[number, number]>(() => {
     if (zoomDomain) return [zoomDomain.y1, zoomDomain.y2];
-    return [SCORE_MIN, SCORE_MAX];
-  }, [zoomDomain]);
+    return [scoreMin, scoreMax];
+  }, [zoomDomain, scoreMin, scoreMax]);
 
   // Scatter data: fixed array of all priced models. Hidden ones get NaN coordinates (Recharts skips NaN points).
   const scatterInput = useMemo(() => {
@@ -424,10 +451,10 @@ export default function ParetoChart({
       const newY2 = sY2 + dyPixel * dataPerPixelY;
 
       // Clamp to global bounds
-      const clampedX1 = Math.max(newX1, PRICE_MIN * 0.5);
+      const clampedX1 = Math.max(newX1, priceMin * 0.5);
       const clampedX2 = Math.min(newX2, priceMax * 2);
-      const clampedY1 = Math.max(newY1, SCORE_MIN - 100);
-      const clampedY2 = Math.min(newY2, SCORE_MAX + 100);
+      const clampedY1 = Math.max(newY1, scoreMin - 100);
+      const clampedY2 = Math.min(newY2, scoreMax + 100);
 
       setZoomDomain({
         x1: clampedX1,
@@ -436,7 +463,7 @@ export default function ParetoChart({
         y2: clampedY2,
       });
     },
-    [priceMax],
+    [priceMin, priceMax, scoreMin, scoreMax],
   );
 
   const handleMouseMove = useCallback(
@@ -517,10 +544,10 @@ export default function ParetoChart({
 
   // ── Zoom buttons ──
   const handleZoomIn = useCallback(() => {
-    const currentX1 = zoomDomain?.x1 ?? PRICE_MIN;
+    const currentX1 = zoomDomain?.x1 ?? priceMin;
     const currentX2 = zoomDomain?.x2 ?? priceMax;
-    const currentY1 = zoomDomain?.y1 ?? SCORE_MIN;
-    const currentY2 = zoomDomain?.y2 ?? SCORE_MAX;
+    const currentY1 = zoomDomain?.y1 ?? scoreMin;
+    const currentY2 = zoomDomain?.y2 ?? scoreMax;
     const zoomFactor = 0.95;
     const centerX = (currentX1 + currentX2) / 2;
     const centerY = (currentY1 + currentY2) / 2;
@@ -532,13 +559,13 @@ export default function ParetoChart({
       y1: centerY - newYRange / 2,
       y2: centerY + newYRange / 2,
     });
-  }, [zoomDomain, priceMax]);
+  }, [zoomDomain, priceMin, priceMax, scoreMin, scoreMax]);
 
   const handleZoomOut = useCallback(() => {
-    const currentX1 = zoomDomain?.x1 ?? PRICE_MIN;
+    const currentX1 = zoomDomain?.x1 ?? priceMin;
     const currentX2 = zoomDomain?.x2 ?? priceMax;
-    const currentY1 = zoomDomain?.y1 ?? SCORE_MIN;
-    const currentY2 = zoomDomain?.y2 ?? SCORE_MAX;
+    const currentY1 = zoomDomain?.y1 ?? scoreMin;
+    const currentY2 = zoomDomain?.y2 ?? scoreMax;
 
     const newX1 = currentX1 - (currentX2 - currentX1) * 0.5;
     const newX2 = currentX2 + (currentX2 - currentX1) * 0.5;
@@ -546,22 +573,22 @@ export default function ParetoChart({
     const newY2 = currentY2 + (currentY2 - currentY1) * 0.5;
 
     if (
-      newX1 <= PRICE_MIN &&
+      newX1 <= priceMin &&
       newX2 >= priceMax &&
-      newY1 <= SCORE_MIN &&
-      newY2 >= SCORE_MAX
+      newY1 <= scoreMin &&
+      newY2 >= scoreMax
     ) {
       setZoomDomain(null);
       return;
     }
 
     setZoomDomain({
-      x1: Math.max(newX1, PRICE_MIN * 0.5),
+      x1: Math.max(newX1, priceMin * 0.5),
       x2: Math.min(newX2, priceMax * 2),
-      y1: Math.max(newY1, SCORE_MIN - 100),
-      y2: Math.min(newY2, SCORE_MAX + 100),
+      y1: Math.max(newY1, scoreMin - 100),
+      y2: Math.min(newY2, scoreMax + 100),
     });
-  }, [zoomDomain, priceMax]);
+  }, [zoomDomain, priceMin, priceMax, scoreMin, scoreMax]);
 
   const handleResetZoom = useCallback(() => {
     setZoomDomain(null);
@@ -772,9 +799,6 @@ export default function ParetoChart({
                   dataKey="x"
                   scale="log"
                   domain={[xDomain[0], xDomain[1]]}
-                  ticks={PRICE_TICKS.filter(
-                    (t) => t >= xDomain[0] && t <= xDomain[1],
-                  )}
                   tickFormatter={formatPrice}
                   tick={{ fill: "#eeeef0", fontSize: 13 }}
                   stroke="rgba(255,255,255,0.2)"
@@ -792,7 +816,7 @@ export default function ParetoChart({
                   type="number"
                   dataKey="y"
                   domain={[yDomain[0], yDomain[1]]}
-                  ticks={SCORE_TICKS.filter(
+                  ticks={scoreTicks.filter(
                     (t) => t >= yDomain[0] && t <= yDomain[1],
                   )}
                   tick={{ fill: "#eeeef0", fontSize: 13 }}
