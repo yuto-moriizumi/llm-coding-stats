@@ -10,6 +10,14 @@
               "allow_fallbacks": false
             }
           }
+        },
+        "minimax/minimax-m3": {
+          "options": {
+            "provider": {
+              "order": ["minimax"],
+              "allow_fallbacks": false
+            }
+          }
         }
       }
     }

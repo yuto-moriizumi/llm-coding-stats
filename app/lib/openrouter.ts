@@ -65,10 +65,16 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "claude-sonnet-4-6": "anthropic/claude-sonnet-4",
   "claude-opus-4-5-thinking": "anthropic/claude-opus-4.5",
   "claude-opus-4-5": "anthropic/claude-opus-4.5",
+  "claude-opus-4-5-20251101-thinking-32k": "anthropic/claude-opus-4.5",
+  "claude-opus-4-5-20251101": "anthropic/claude-opus-4.5",
   "claude-sonnet-4-5-thinking": "anthropic/claude-sonnet-4.5",
+  "claude-sonnet-4-5-20250929-thinking-32k": "anthropic/claude-sonnet-4.5",
   "claude-opus-4-1": "anthropic/claude-opus-4.1",
+  "claude-opus-4-1-20250805": "anthropic/claude-opus-4.1",
   "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
+  "claude-sonnet-4-5-20250929": "anthropic/claude-sonnet-4.5",
   "claude-haiku-4-5": "anthropic/claude-4.5-haiku-20251001",
+  "claude-haiku-4-5-20251001": "anthropic/claude-4.5-haiku-20251001",
   "claude-fable-5": "anthropic/claude-fable-5",
 
   // ─ OpenAI ─────────────────────────────────────────────────
@@ -92,21 +98,26 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   // ── Google ─────────────────────────────────────────────────
   "gemini-3.5-flash": "google/gemini-3.5-flash",
   "gemini-3.1-pro": "google/gemini-3.1-pro-preview",
+  "gemini-3.1-pro-preview": "google/gemini-3.1-pro-preview",
   "gemini-3-pro": "google/gemini-3-pro",
   "gemini-3-flash": "google/gemini-3-flash-preview",
   "gemini-3-flash-thinking": "google/gemini-3-flash-preview",
+  "gemini-3-flash (thinking-minimal)": "google/gemini-3-flash-preview",
   "gemma-4-31b": "google/gemma-4-31b-it",
   "gemma-4-26b-a4b": "google/gemma-4-26b-a4b-it",
   "gemini-3.1-flash-lite": "google/gemini-3.1-flash-lite",
+  "gemini-3.1-flash-lite-preview": "google/gemini-3.1-flash-lite",
   "gemini-2.5-pro": "google/gemini-2.5-pro",
 
   // ── Zhipu AI ──────────────────────────────────────────────
   "glm-5.1": "z-ai/glm-5.1",
+  "glm-5": "z-ai/glm-5",
   "glm-4.7": "z-ai/glm-4.7",
   "glm-4.6": "z-ai/glm-4.6",
 
   // ── Moonshot AI ────────────────────────────────────────────
   "kimi-k2.6": "moonshotai/kimi-k2.6",
+  "kimi-k2.7-code": "moonshotai/kimi-k2.7",
   "kimi-k2.5-thinking": "moonshotai/kimi-k2.5",
   "kimi-k2.5-instant": "moonshotai/kimi-k2.5",
   "kimi-k2-thinking-turbo": "moonshotai/kimi-k2",
@@ -123,6 +134,7 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
 
   // ── Alibaba (Qwen) ─────────────────────────────────────────
   "qwen3.7-max": "qwen/qwen3.7-max",
+  "qwen3.7-max-20260517": "qwen/qwen3.7-max",
   "qwen3.6-max-preview": "qwen/qwen3.6-max-preview",
   "qwen3.6-plus": "qwen/qwen3.6-plus",
   "qwen3.5-397b-a17b": "qwen/qwen3.5-397b-a17b",
@@ -130,6 +142,7 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "qwen3.5-27b": "qwen/qwen3.5-27b",
   "qwen3.5-35b-a3b": "qwen/qwen3.5-35b-a3b",
   "qwen3.5-flash": "qwen/qwen3.5-flash",
+  "qwen3-coder-480b-a35b-instruct": "qwen/qwen3-coder-480b-a35b-instruct",
 
   // ── Xiaomi (MiMo) ────────────────────────────────────────
   "mimo-v2.5-pro": "xiaomi/mimo-v2.5-pro",
@@ -137,6 +150,8 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "mimo-v2-pro": "xiaomi/mimo-v2-pro",
   "mimo-v2-flash": "xiaomi/mimo-v2-flash",
   "mimo-v2-flash-thinking": "xiaomi/mimo-v2-flash",
+  "mimo-v2-flash (non-thinking)": "xiaomi/mimo-v2-flash",
+  "mimo-v2-flash (thinking)": "xiaomi/mimo-v2-flash",
 
   // ─ DeepSeek ───────────────────────────────────────────────
   "deepseek-v4-pro-thinking": "deepseek/deepseek-v4-pro",
@@ -146,10 +161,13 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
 
   // ── xAI (Grok) ─────────────────────────────────────────────
   "grok-4.20-beta": "x-ai/grok-4.20",
+  "grok-4.20-beta-0309-reasoning": "x-ai/grok-4.20",
   "grok-4.3": "x-ai/grok-4.3",
   "grok-4-1-fast": "x-ai/grok-4.1-fast",
+  "grok-4-1-fast-reasoning": "x-ai/grok-4.1-fast",
   "grok-4.1-thinking": "x-ai/grok-4.1",
   "grok-4-fast": "x-ai/grok-4-fast",
+  "grok-4-fast-reasoning": "x-ai/grok-4-fast",
   "grok-code-fast-1": "x-ai/grok-code-fast-1",
 
   // ── Mistral ────────────────────────────────────────────────
@@ -172,6 +190,10 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
 
   // ── Inception Labs ─────────────────────────────────────────
   "mercury-2": "inception/mercury-2",
+
+  // ── Poolside ───────────────────────────────────────────────
+  "laguna-m.1": "poolside/laguna-m.1",
+  "laguna-xs.2": "poolside/laguna-xs.2",
 };
 
 // ISR キャッシュ: APIレスポンスが5MB超でNext.jsデータキャッシュの上限(2MB)を超えるため、
