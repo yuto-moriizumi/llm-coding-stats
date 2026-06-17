@@ -110,6 +110,7 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "gemini-2.5-pro": "google/gemini-2.5-pro",
 
   // ── Zhipu AI ──────────────────────────────────────────────
+  "glm-5.2 (max)": "z-ai/glm-5.2",
   "glm-5.1": "z-ai/glm-5.1",
   "glm-5": "z-ai/glm-5",
   "glm-4.7": "z-ai/glm-4.7",
