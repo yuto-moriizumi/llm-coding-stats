@@ -11,6 +11,14 @@
             }
           }
         },
+        "deepseek/deepseek-v4-pro": {
+          "options": {
+            "provider": {
+              "order": ["deepseek", "streamlake"],
+              "allow_fallbacks": false
+            }
+          }
+        },
         "minimax/minimax-m3": {
           "options": {
             "provider": {
