@@ -176,6 +176,7 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "mistral-large-3": "mistralai/mistral-large-2512",
   "devstral-2": "mistralai/devstral-2",
   "devstral-medium": "mistralai/devstral-medium",
+  "devstral-medium-2507": "mistralai/devstral-medium-2507",
 
   // ── Tencent ────────────────────────────────────────────────
   "hunyuan-hy3-preview": "tencent/hunyuan-hy3-preview",
@@ -195,6 +196,9 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   // ── Poolside ───────────────────────────────────────────────
   "laguna-m.1": "poolside/laguna-m.1",
   "laguna-xs.2": "poolside/laguna-xs.2",
+
+  // ── ByteDance (Seed) ──────────────────────────────────────
+  "seed-2.1-pro-preview": "bytedance/seed-2.1-pro-preview",
 };
 
 // ISR キャッシュ: APIレスポンスが5MB超でNext.jsデータキャッシュの上限(2MB)を超えるため、
