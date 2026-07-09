@@ -101,17 +101,12 @@ export const LLM_MODELS: LLMModel[] = [
   { name: "claude-opus-4-8", provider: "anthropic", arenaScore: 1535, inputPrice: 5, outputPrice: 25 },
   { name: "claude-opus-4-6", provider: "anthropic", arenaScore: 1536, inputPrice: 5, outputPrice: 25 },
   { name: "claude-sonnet-4-6", provider: "anthropic", arenaScore: 1522, inputPrice: 3, outputPrice: 15 },
-  { name: "claude-opus-4-5-thinking", provider: "anthropic", arenaScore: 1490, inputPrice: 5, outputPrice: 25 },
-  { name: "claude-opus-4-5", provider: "anthropic", arenaScore: 1467, inputPrice: 5, outputPrice: 25 },
+  { name: "claude-sonnet-5-high", provider: "anthropic", arenaScore: 1551, inputPrice: 3, outputPrice: 15 },
   { name: "claude-opus-4-5-20251101-thinking-32k", provider: "anthropic", arenaScore: 1490, inputPrice: 5, outputPrice: 25 },
   { name: "claude-opus-4-5-20251101", provider: "anthropic", arenaScore: 1466, inputPrice: 5, outputPrice: 25 },
-  { name: "claude-sonnet-4-5-thinking", provider: "anthropic", arenaScore: 1388, inputPrice: 3, outputPrice: 15 },
   { name: "claude-sonnet-4-5-20250929-thinking-32k", provider: "anthropic", arenaScore: 1388, inputPrice: 3, outputPrice: 15 },
-  { name: "claude-opus-4-1", provider: "anthropic", arenaScore: 1386, inputPrice: 15, outputPrice: 75 },
   { name: "claude-opus-4-1-20250805", provider: "anthropic", arenaScore: 1386, inputPrice: 15, outputPrice: 75 },
-  { name: "claude-sonnet-4-5", provider: "anthropic", arenaScore: 1386, inputPrice: 3, outputPrice: 15 },
   { name: "claude-sonnet-4-5-20250929", provider: "anthropic", arenaScore: 1386, inputPrice: 3, outputPrice: 15 },
-  { name: "claude-haiku-4-5", provider: "anthropic", arenaScore: 1324, inputPrice: 1, outputPrice: 5 },
   { name: "claude-haiku-4-5-20251001", provider: "anthropic", arenaScore: 1327, inputPrice: 1, outputPrice: 5 },
 
   // ── OpenAI ─────────────────────────────────────────────────
@@ -134,15 +129,12 @@ export const LLM_MODELS: LLMModel[] = [
 
   // ── Google ─────────────────────────────────────────────────
   { name: "gemini-3.5-flash", provider: "google", arenaScore: 1510, inputPrice: 1.5, outputPrice: 9 },
-  { name: "gemini-3.1-pro", provider: "google", arenaScore: 1447, inputPrice: 2, outputPrice: 12 },
   { name: "gemini-3.1-pro-preview", provider: "google", arenaScore: 1445, inputPrice: 2, outputPrice: 12 },
   { name: "gemini-3-pro", provider: "google", arenaScore: 1439, inputPrice: 2, outputPrice: 12, deprecated: true },
   { name: "gemini-3-flash", provider: "google", arenaScore: 1437, inputPrice: 0.5, outputPrice: 3 },
-  { name: "gemini-3-flash-thinking", provider: "google", arenaScore: 1388, inputPrice: 0.5, outputPrice: 3 },
   { name: "gemini-3-flash (thinking-minimal)", provider: "google", arenaScore: 1387, inputPrice: 0.5, outputPrice: 3 },
   { name: "gemma-4-31b", provider: "google", arenaScore: 1371, inputPrice: 0.14, outputPrice: 0.4 },
   { name: "gemma-4-26b-a4b", provider: "google", arenaScore: 1359, inputPrice: 0, outputPrice: 0 },
-  { name: "gemini-3.1-flash-lite", provider: "google", arenaScore: 1248, inputPrice: 0.25, outputPrice: 1.5 },
   { name: "gemini-3.1-flash-lite-preview", provider: "google", arenaScore: 1253, inputPrice: 0.25, outputPrice: 1.5 },
   { name: "gemini-2.5-pro", provider: "google", arenaScore: 1204, inputPrice: 1.25, outputPrice: 10 },
 
@@ -159,9 +151,6 @@ export const LLM_MODELS: LLMModel[] = [
   { name: "kimi-k2.5-thinking", provider: "moonshot", arenaScore: 1431, inputPrice: 0.6, outputPrice: 3 },
   { name: "kimi-k2.5-instant", provider: "moonshot", arenaScore: 1408, inputPrice: 0.38, outputPrice: 2.02 },
   { name: "kimi-k2-thinking-turbo", provider: "moonshot", arenaScore: 1330, inputPrice: 1.15, outputPrice: 8 },
-
-  // ── Meta ───────────────────────────────────────────────────
-  { name: "muse-spark", provider: "meta", arenaScore: 1507, inputPrice: 0, outputPrice: 0 },
 
   // ── MiniMax ────────────────────────────────────────────────
   { name: "minimax-m3", provider: "minimax", arenaScore: 1501, inputPrice: 0.6, outputPrice: 2.4 },
@@ -185,25 +174,21 @@ export const LLM_MODELS: LLMModel[] = [
   { name: "mimo-v2.5-pro", provider: "xiaomi", arenaScore: 1473, inputPrice: 0.43, outputPrice: 0.87 },
   { name: "mimo-v2.5", provider: "xiaomi", arenaScore: 1430, inputPrice: 0.14, outputPrice: 0.28 },
   { name: "mimo-v2-pro", provider: "xiaomi", arenaScore: 1432, inputPrice: 1, outputPrice: 3 },
-  { name: "mimo-v2-flash", provider: "xiaomi", arenaScore: 1337, inputPrice: 0.1, outputPrice: 0.3 },
-  { name: "mimo-v2-flash-thinking", provider: "xiaomi", arenaScore: 1301, inputPrice: 0.1, outputPrice: 0.3 },
   { name: "mimo-v2-flash (non-thinking)", provider: "xiaomi", arenaScore: 1336, inputPrice: 0.1, outputPrice: 0.3 },
   { name: "mimo-v2-flash (thinking)", provider: "xiaomi", arenaScore: 1301, inputPrice: 0.1, outputPrice: 0.3 },
 
   // ── DeepSeek ───────────────────────────────────────────────
+  { name: "deepseek-v4-pro", provider: "deepseek", arenaScore: 1446, inputPrice: 0.43, outputPrice: 0.87 },
   { name: "deepseek-v4-pro-thinking", provider: "deepseek", arenaScore: 1457, inputPrice: 0.43, outputPrice: 0.87 },
   { name: "deepseek-v3.2-thinking", provider: "deepseek", arenaScore: 1368, inputPrice: 0.23, outputPrice: 0.34 },
   { name: "deepseek-v3.2", provider: "deepseek", arenaScore: 1332, inputPrice: 0.23, outputPrice: 0.34 },
   { name: "deepseek-v3.2-exp", provider: "deepseek", arenaScore: 1288, inputPrice: 0.27, outputPrice: 0.41 },
 
   // ── xAI (Grok) ────────────────────────────────────────────
-  { name: "grok-4.20-beta", provider: "xai", arenaScore: 1393, inputPrice: 2, outputPrice: 6 },
   { name: "grok-4.20-beta-0309-reasoning", provider: "xai", arenaScore: 1383, inputPrice: 2, outputPrice: 6 },
   { name: "grok-4.3", provider: "xai", arenaScore: 1363, inputPrice: 1.25, outputPrice: 2.5 },
-  { name: "grok-4-1-fast", provider: "xai", arenaScore: 1234, inputPrice: 0.2, outputPrice: 0.5, deprecated: true },
   { name: "grok-4-1-fast-reasoning", provider: "xai", arenaScore: 1234, inputPrice: 0.2, outputPrice: 0.5, deprecated: true },
   { name: "grok-4.1-thinking", provider: "xai", arenaScore: 1209, inputPrice: 0, outputPrice: 0, deprecated: true },
-  { name: "grok-4-fast", provider: "xai", arenaScore: 1150, inputPrice: 0.2, outputPrice: 0.5, deprecated: true },
   { name: "grok-4-fast-reasoning", provider: "xai", arenaScore: 1150, inputPrice: 0.2, outputPrice: 0.5, deprecated: true },
   { name: "grok-code-fast-1", provider: "xai", arenaScore: 1140, inputPrice: 0.2, outputPrice: 1.5, deprecated: true },
 
@@ -211,7 +196,6 @@ export const LLM_MODELS: LLMModel[] = [
   { name: "mistral-medium-3.5", provider: "mistral", arenaScore: 1269, inputPrice: 1.5, outputPrice: 7.5 },
   { name: "mistral-large-3", provider: "mistral", arenaScore: 1224, inputPrice: 0.5, outputPrice: 1.5 },
   { name: "devstral-2", provider: "mistral", arenaScore: 1200, inputPrice: 0, outputPrice: 0 },
-  { name: "devstral-medium", provider: "mistral", arenaScore: 1092, inputPrice: 0.4, outputPrice: 2, deprecated: true },
   { name: "devstral-medium-2507", provider: "mistral", arenaScore: 1092, inputPrice: 0.4, outputPrice: 2 },
 
   // ── Tencent ────────────────────────────────────────────────
