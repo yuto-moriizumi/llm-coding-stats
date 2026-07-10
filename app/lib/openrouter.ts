@@ -91,7 +91,7 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "gpt-5.1-codex-mini": "openai/gpt-5.1-codex-mini",
 
   // ── Google ─────────────────────────────────────────────────
-  "gemini-3.5-flash": "google/gemini-3.5-flash",
+  "gemini-3.5-flash-medium": "google/gemini-3.5-flash",
   "gemini-3.1-pro-preview": "google/gemini-3.1-pro-preview",
   "gemini-3-pro": "google/gemini-3-pro",
   "gemini-3-flash": "google/gemini-3-flash-preview",
@@ -104,6 +104,7 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   // ── Zhipu AI ──────────────────────────────────────────────
   "glm-5.2 (max)": "z-ai/glm-5.2",
   "glm-5.1": "z-ai/glm-5.1",
+  "glm-5v-turbo": "z-ai/glm-5v-turbo",
   "glm-5": "z-ai/glm-5",
   "glm-4.7": "z-ai/glm-4.7",
   "glm-4.6": "z-ai/glm-4.6",
@@ -150,6 +151,7 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
 
   // ── xAI (Grok) ─────────────────────────────────────────────
   "grok-4.20-beta-0309-reasoning": "x-ai/grok-4.20",
+  "grok-4.5": "x-ai/grok-4.5",
   "grok-4.3": "x-ai/grok-4.3",
   "grok-4-1-fast-reasoning": "x-ai/grok-4.1-fast",
   "grok-4.1-thinking": "x-ai/grok-4.1",
