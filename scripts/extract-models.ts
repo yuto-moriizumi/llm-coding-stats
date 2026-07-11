@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 
 type ExtractedModel = {
   modelName: string;
-  score: string;
+  score: number;
   inputPrice: number;
   outputPrice: number;
 };
@@ -38,13 +38,21 @@ function extractModels(html: string): ExtractedModel[] {
 
     results.push({
       modelName: anchorMatch[1],
-      score: scoreMatch[1],
+      score: Number.parseInt(scoreMatch[1], 10),
       inputPrice,
       outputPrice,
     });
   }
 
-  return results;
+  const uniqueModels = new Map<string, ExtractedModel>();
+  for (const model of results) {
+    const existing = uniqueModels.get(model.modelName);
+    if (!existing || model.score > existing.score) {
+      uniqueModels.set(model.modelName, model);
+    }
+  }
+
+  return [...uniqueModels.values()];
 }
 
 function stripTags(html: string): string {
