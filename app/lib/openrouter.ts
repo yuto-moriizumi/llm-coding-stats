@@ -73,12 +73,12 @@ const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
   "claude-fable-5": "anthropic/claude-fable-5",
 
   // ─ OpenAI ─────────────────────────────────────────────────
-  "gpt-5.5-xhigh": "openai/gpt-5.5",
-  "gpt-5.5-high": "openai/gpt-5.5",
-  "gpt-5.4-high": "openai/gpt-5.4",
-  "gpt-5.5": "openai/gpt-5.5",
-  "gpt-5.4-medium": "openai/gpt-5.4",
-  "gpt-5.3-codex-h": "openai/gpt-5.3-codex",
+  "gpt-5.5-xhigh (codex-harness)": "openai/gpt-5.5",
+  "gpt-5.5-high (codex-harness)": "openai/gpt-5.5",
+  "gpt-5.4-high (codex-harness)": "openai/gpt-5.4",
+  "gpt-5.5 (codex-harness)": "openai/gpt-5.5",
+  "gpt-5.4-medium (codex-harness)": "openai/gpt-5.4",
+  "gpt-5.3-codex (codex-harness)": "openai/gpt-5.3-codex",
   "gpt-5.2": "openai/gpt-5.2",
   "gpt-5.4-mini-high": "openai/gpt-5.4-mini",
   "gpt-5-medium": "openai/gpt-5",

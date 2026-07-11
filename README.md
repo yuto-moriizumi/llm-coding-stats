@@ -38,6 +38,7 @@ npm run extract-models # Extract model names and scores from an HTML file
 ```
 
 `npm run extract-models` はデフォルトで `data.html` を読みます。別ファイルを使う場合はパスを渡します。
+同じモデル名が複数行ある場合は、最も高いスコアの行だけを抽出します。価格が `N/A` のモデルは価格を `0` として出力します。
 
 ```bash
 npm run extract-models -- ./path/to/data.html
