@@ -17,6 +17,7 @@ import type { EndpointData } from "../lib/openrouter";
 interface ThroughputPriceChartProps {
   endpoints: EndpointData[] | null;
   modelName: string | null;
+  openrouterSlug: string;
   priceRatio?: number;
 }
 
@@ -151,7 +152,12 @@ function generateLinearTicks(min: number, max: number, count = 5): number[] {
   return ticks;
 }
 
-export default function ThroughputPriceChart({ endpoints, modelName, priceRatio = 3 }: ThroughputPriceChartProps) {
+export default function ThroughputPriceChart({
+  endpoints,
+  modelName,
+  openrouterSlug,
+  priceRatio = 3,
+}: ThroughputPriceChartProps) {
   const [hoveredPoint, setHoveredPoint] = useState<ChartPoint | null>(null);
 
   // Compute chart data and pareto frontier
@@ -232,7 +238,13 @@ export default function ThroughputPriceChart({ endpoints, modelName, priceRatio 
       {/* Model name header */}
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-medium text-gray-200">
-          {modelName}
+          <a
+            href={`https://openrouter.ai/${openrouterSlug}`}
+            className="text-blue-400 underline decoration-blue-400/50 underline-offset-2 hover:text-blue-300"
+            aria-label={`View ${modelName} on OpenRouter`}
+          >
+            {modelName}
+          </a>
           <span className="ml-2 text-xs font-normal text-gray-500">
             — Provider-level throughput vs. effective price
           </span>
