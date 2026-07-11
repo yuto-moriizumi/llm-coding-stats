@@ -10,7 +10,11 @@ async function getEnrichedModels(): Promise<LLMModel[]> {
   ]);
 
   return LLM_MODELS.map((model) => {
-    const enriched: LLMModel = { ...model };
+    const enriched: LLMModel = {
+      ...model,
+      inputPrice: 0,
+      outputPrice: 0,
+    };
 
     // Throughput
     const throughput = throughputMap.get(model.name);
@@ -18,7 +22,7 @@ async function getEnrichedModels(): Promise<LLMModel[]> {
       enriched.throughput = throughput;
     }
 
-    // Pricing (API 側に値があれば上書き。存在しない場合はハードコード値を維持)
+    // Pricing (OpenRouter API 側に値があれば上書き。未取得時は 0 を維持)
     const pricing = pricingMap.get(model.name);
     if (pricing != null) {
       enriched.inputPrice = pricing.inputPrice;

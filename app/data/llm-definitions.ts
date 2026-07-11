@@ -14,6 +14,9 @@ export interface LLMModel {
   deprecated?: boolean;
 }
 
+/** Static model metadata; pricing is populated from OpenRouter at runtime. */
+export type LLMModelDefinition = Omit<LLMModel, "inputPrice" | "outputPrice">;
+
 export type Provider =
   | "anthropic"
   | "openai"
