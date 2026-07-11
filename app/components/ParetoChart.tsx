@@ -18,7 +18,7 @@ import {
   blendedPrice,
   type LLMModel,
   type Provider,
-} from "../data/llm-data";
+} from "../data/llm-definitions";
 
 // ── Props ────────────────────────────────────────────────────
 interface ParetoChartProps {

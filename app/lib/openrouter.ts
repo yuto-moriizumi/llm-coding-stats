@@ -54,138 +54,9 @@ export interface EndpointData {
  * ローカルのモデル名 (例: claude-opus-4-6) と OpenRouter の slug
  * (例: anthropic/claude-opus-4.6) は形式が異なるため、明示的なマッピングが必要。
  */
-const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = {
-  // ─ Anthropic ──────────────────────────────────────────────
-  "claude-opus-4-7-thinking": "anthropic/claude-opus-4.7",
-  "claude-opus-4-7": "anthropic/claude-opus-4.7",
-  "claude-opus-4-8-thinking": "anthropic/claude-opus-4.8",
-  "claude-opus-4-8": "anthropic/claude-opus-4.8",
-  "claude-opus-4-6-thinking": "anthropic/claude-opus-4.6",
-  "claude-opus-4-6": "anthropic/claude-opus-4.6",
-  "claude-sonnet-4-6": "anthropic/claude-sonnet-4",
-  "claude-sonnet-5-high": "anthropic/claude-sonnet-5",
-  "claude-opus-4-5-20251101-thinking-32k": "anthropic/claude-opus-4.5",
-  "claude-opus-4-5-20251101": "anthropic/claude-opus-4.5",
-  "claude-sonnet-4-5-20250929-thinking-32k": "anthropic/claude-sonnet-4.5",
-  "claude-opus-4-1-20250805": "anthropic/claude-opus-4.1",
-  "claude-sonnet-4-5-20250929": "anthropic/claude-sonnet-4.5",
-  "claude-haiku-4-5-20251001": "anthropic/claude-4.5-haiku-20251001",
-  "claude-fable-5": "anthropic/claude-fable-5",
-
-  // ─ OpenAI ─────────────────────────────────────────────────
-  "gpt-5.5-xhigh (codex-harness)": "openai/gpt-5.5",
-  "gpt-5.5-high (codex-harness)": "openai/gpt-5.5",
-  "gpt-5.4-high (codex-harness)": "openai/gpt-5.4",
-  "gpt-5.5 (codex-harness)": "openai/gpt-5.5",
-  "gpt-5.4-medium (codex-harness)": "openai/gpt-5.4",
-  "gpt-5.3-codex (codex-harness)": "openai/gpt-5.3-codex",
-  "gpt-5.2": "openai/gpt-5.2",
-  "gpt-5.4-mini-high": "openai/gpt-5.4-mini",
-  "gpt-5-medium": "openai/gpt-5",
-  "gpt-5.1-medium": "openai/gpt-5.1",
-  "gpt-5.4": "openai/gpt-5.4",
-  "gpt-5.3-codex-m": "openai/gpt-5.3-codex",
-  "gpt-5.1": "openai/gpt-5.1",
-  "gpt-5.2-codex": "openai/gpt-5.2-codex",
-  "gpt-5.1-codex": "openai/gpt-5.1-codex",
-  "gpt-5.1-codex-mini": "openai/gpt-5.1-codex-mini",
-
-  // ── Google ─────────────────────────────────────────────────
-  "gemini-3.5-flash-medium": "google/gemini-3.5-flash",
-  "gemini-3.1-pro-preview": "google/gemini-3.1-pro-preview",
-  "gemini-3-pro": "google/gemini-3-pro",
-  "gemini-3-flash": "google/gemini-3-flash-preview",
-  "gemini-3-flash (thinking-minimal)": "google/gemini-3-flash-preview",
-  "gemma-4-31b": "google/gemma-4-31b-it",
-  "gemma-4-26b-a4b": "google/gemma-4-26b-a4b-it",
-  "gemini-3.1-flash-lite-preview": "google/gemini-3.1-flash-lite",
-  "gemini-2.5-pro": "google/gemini-2.5-pro",
-
-  // ── Zhipu AI ──────────────────────────────────────────────
-  "glm-5.2 (max)": "z-ai/glm-5.2",
-  "glm-5.1": "z-ai/glm-5.1",
-  "glm-5v-turbo": "z-ai/glm-5v-turbo",
-  "glm-5": "z-ai/glm-5",
-  "glm-4.7": "z-ai/glm-4.7",
-  "glm-4.6": "z-ai/glm-4.6",
-
-  // ── Moonshot AI ────────────────────────────────────────────
-  "kimi-k2.6": "moonshotai/kimi-k2.6",
-  "kimi-k2.7-code": "moonshotai/kimi-k2.7",
-  "kimi-k2.5-thinking": "moonshotai/kimi-k2.5",
-  "kimi-k2.5-instant": "moonshotai/kimi-k2.5",
-  "kimi-k2-thinking-turbo": "moonshotai/kimi-k2",
-
-  // ── MiniMax ────────────────────────────────────────────────
-  "minimax-m3": "minimax/minimax-m3",
-  "minimax-m2.7": "minimax/minimax-m2.7",
-  "minimax-m2.1-preview": "minimax/minimax-m2.1",
-  "minimax-m2.5": "minimax/minimax-m2.5",
-  "minimax-m2": "minimax/minimax-m2",
-
-  // ── Alibaba (Qwen) ─────────────────────────────────────────
-  "qwen3.7-max": "qwen/qwen3.7-max",
-  "qwen3.7-max-20260517": "qwen/qwen3.7-max",
-  "qwen3.6-max-preview": "qwen/qwen3.6-max-preview",
-  "qwen3.6-plus": "qwen/qwen3.6-plus",
-  "qwen3.5-397b-a17b": "qwen/qwen3.5-397b-a17b",
-  "qwen3.5-122b-a10b": "qwen/qwen3.5-122b-a10b",
-  "qwen3.5-27b": "qwen/qwen3.5-27b",
-  "qwen3.5-35b-a3b": "qwen/qwen3.5-35b-a3b",
-  "qwen3.5-flash": "qwen/qwen3.5-flash",
-  "qwen3-coder-480b-a35b-instruct": "qwen/qwen3-coder-480b-a35b-instruct",
-
-  // ── Xiaomi (MiMo) ────────────────────────────────────────
-  "mimo-v2.5-pro": "xiaomi/mimo-v2.5-pro",
-  "mimo-v2.5": "xiaomi/mimo-v2.5",
-  "mimo-v2-pro": "xiaomi/mimo-v2-pro",
-  "mimo-v2-flash (non-thinking)": "xiaomi/mimo-v2-flash",
-  "mimo-v2-flash (thinking)": "xiaomi/mimo-v2-flash",
-
-  // ─ DeepSeek ───────────────────────────────────────────────
-  "deepseek-v4-pro": "deepseek/deepseek-v4-pro",
-  "deepseek-v4-pro-thinking": "deepseek/deepseek-v4-pro",
-  "deepseek-v3.2-thinking": "deepseek/deepseek-v3.2",
-  "deepseek-v3.2": "deepseek/deepseek-v3.2",
-  "deepseek-v3.2-exp": "deepseek/deepseek-v3.2",
-
-  // ── xAI (Grok) ─────────────────────────────────────────────
-  "grok-4.20-beta-0309-reasoning": "x-ai/grok-4.20",
-  "grok-4.5": "x-ai/grok-4.5",
-  "grok-4.3": "x-ai/grok-4.3",
-  "grok-4-1-fast-reasoning": "x-ai/grok-4.1-fast",
-  "grok-4.1-thinking": "x-ai/grok-4.1",
-  "grok-4-fast-reasoning": "x-ai/grok-4-fast",
-  "grok-code-fast-1": "x-ai/grok-code-fast-1",
-
-  // ── Mistral ────────────────────────────────────────────────
-  "mistral-medium-3.5": "mistralai/mistral-medium-3-5",
-  "mistral-large-3": "mistralai/mistral-large-2512",
-  "devstral-2": "mistralai/devstral-2",
-  "devstral-medium-2507": "mistralai/devstral-medium-2507",
-
-  // ── Tencent ────────────────────────────────────────────────
-  "hunyuan-hy3-preview": "tencent/hunyuan-hy3-preview",
-
-  // ── Kwai ───────────────────────────────────────────────────
-  "KAT-Coder-Pro-V1": "kwai/kat-coder-pro-v1",
-
-  // ── IBM ────────────────────────────────────────────────────
-  "granite-4.1-8b": "ibm-granite/granite-4.1-8b",
-
-  // ── Arcee AI ──────────────────────────────────────────────
-  "trinity-large-thinking": "arcee-ai/trinity-large-thinking",
-
-  // ── Inception Labs ─────────────────────────────────────────
-  "mercury-2": "inception/mercury-2",
-
-  // ── Poolside ───────────────────────────────────────────────
-  "laguna-m.1": "poolside/laguna-m.1",
-  "laguna-xs.2": "poolside/laguna-xs.2",
-
-  // ── ByteDance (Seed) ──────────────────────────────────────
-  "seed-2.1-pro-preview": "bytedance/seed-2.1-pro-preview",
-};
+const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = Object.fromEntries(
+  LLM_MODELS.map((model) => [model.name, model.openrouterSlug]),
+);
 
 // ISR キャッシュ: APIレスポンスが5MB超でNext.jsデータキャッシュの上限(2MB)を超えるため、
 // モジュールレベルで throughput Map のみをキャッシュする。
@@ -630,3 +501,4 @@ export async function fetchPricingMap(): Promise<Map<string, ModelPricing>> {
 
   return result;
 }
+import { LLM_MODELS } from "../data/llm-models";
