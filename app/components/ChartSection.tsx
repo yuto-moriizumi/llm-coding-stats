@@ -61,6 +61,7 @@ export default function ChartSection({ models, endpointMap }: ChartSectionProps)
           <ThroughputPriceChart
             endpoints={selectedEndpoints}
             modelName={selectedModel.name}
+            openrouterSlug={selectedModel.openrouterSlug}
             priceRatio={priceRatio}
           />
         </div>
