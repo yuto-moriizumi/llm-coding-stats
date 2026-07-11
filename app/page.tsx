@@ -1,5 +1,6 @@
 import ChartSection from "./components/ChartSection";
-import { LLM_MODELS, type LLMModel } from "./data/llm-data";
+import { LLM_MODELS } from "./data/llm-models";
+import type { LLMModel } from "./data/llm-definitions";
 import { fetchThroughputMap, fetchPricingMap, fetchEndpointMap } from "./lib/openrouter";
 
 async function getEnrichedModels(): Promise<LLMModel[]> {

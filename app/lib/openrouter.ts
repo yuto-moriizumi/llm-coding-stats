@@ -501,4 +501,4 @@ export async function fetchPricingMap(): Promise<Map<string, ModelPricing>> {
 
   return result;
 }
-import { LLM_MODELS } from "../data/llm-data";
+import { LLM_MODELS } from "../data/llm-models";

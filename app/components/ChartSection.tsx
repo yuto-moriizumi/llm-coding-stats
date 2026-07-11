@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import ParetoChart from "./ParetoChart";
 import ThroughputPriceChart from "./ThroughputPriceChart";
-import { type LLMModel } from "../data/llm-data";
+import type { LLMModel } from "../data/llm-definitions";
 import { type EndpointData } from "../lib/openrouter";
 
 interface ChartSectionProps {
