@@ -19,7 +19,7 @@ export const LLM_MODELS: LLMModelDefinition[] = [
   { name: "claude-haiku-4-5-20251001", provider: "anthropic", arenaScore: 1327, openrouterSlug: "anthropic/claude-4.5-haiku-20251001" },
 
   // ── OpenAI ─────────────────────────────────────────────────
-  { name: "gpt-5.6-sol-xhigh (codex-harness)", provider: "openai", arenaScore: 1636, openrouterSlug: "openai/gpt-5.6-sol" },
+  { name: "gpt-5.6-sol-xhigh", provider: "openai", arenaScore: 1636, openrouterSlug: "openai/gpt-5.6-sol" },
   { name: "gpt-5.5-xhigh (codex-harness)", provider: "openai", arenaScore: 1502, openrouterSlug: "openai/gpt-5.5" },
   { name: "gpt-5.5-high (codex-harness)", provider: "openai", arenaScore: 1481, openrouterSlug: "openai/gpt-5.5" },
   { name: "gpt-5.4-high (codex-harness)", provider: "openai", arenaScore: 1457, openrouterSlug: "openai/gpt-5.4" },
