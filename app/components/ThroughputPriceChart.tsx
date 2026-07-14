@@ -246,7 +246,7 @@ export default function ThroughputPriceChart({
             {modelName}
           </a>
           <span className="ml-2 text-xs font-normal text-gray-500">
-            — Provider-level throughput vs. effective price
+            — Provider-level throughput vs. listed price
           </span>
         </h3>
         <span className="text-xs text-gray-600">

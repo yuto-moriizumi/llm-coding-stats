@@ -7,8 +7,6 @@ interface RoutingHeuristics {
   p75_throughput_30_minutes?: number;
   p90_throughput_30_minutes?: number;
   request_count?: number;
-  effective_prompt_price?: number;
-  effective_completion_price?: number;
 }
 
 interface CatalogEndpointModel {
@@ -44,8 +42,8 @@ export interface EndpointData {
   providerSlug: string;
   variant: string;
   throughput: number;
-  inputPrice: number;   // effective prompt price per 1M tokens
-  outputPrice: number;  // effective completion price per 1M tokens
+  inputPrice: number;   // prompt price per 1M tokens
+  outputPrice: number;  // completion price per 1M tokens
 }
 
 /**
@@ -204,16 +202,11 @@ interface EndpointsInfo {
 
 interface EndpointStats {
   throughput: number;
-  inputPrice?: number;
-  outputPrice?: number;
 }
 
 /**
- * stats/endpoint API から各エンドポイントのスループットと実効価格を取得し、
+ * stats/endpoint API から各エンドポイントのスループットを取得し、
  * providerName + "::" + providerSlug のキー → stats の Map を返す。
- *
- * 実効価格（effective_prompt_price / effective_completion_price）は
- * プロンプトキャッシュ適用後の実際の価格であり、リスト価格より正確。
  */
 async function fetchEndpointStatsMap(
   permaslug: string,
@@ -256,26 +249,11 @@ async function fetchEndpointStatsMap(
         throughput = stats.p50_throughput ?? null;
       }
 
-      const effectivePromptPrice = rh?.effective_prompt_price;
-      const effectiveCompletionPrice = rh?.effective_completion_price;
-
       const key = `${providerName}::${providerSlug}`;
 
-      if (
-        throughput != null ||
-        effectivePromptPrice != null ||
-        effectiveCompletionPrice != null
-      ) {
+      if (throughput != null) {
         result.set(key, {
           throughput: throughput != null ? Math.round(throughput) : 0,
-          inputPrice:
-            effectivePromptPrice != null
-              ? Math.round(effectivePromptPrice * 1_000_000 * 100) / 100
-              : undefined,
-          outputPrice:
-            effectiveCompletionPrice != null
-              ? Math.round(effectiveCompletionPrice * 1_000_000 * 100) / 100
-              : undefined,
         });
       }
     }
@@ -358,7 +336,7 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
       }),
     );
 
-    // 2) 各モデルの permaslug に対して stats API を叩いて個別スループット＆実効価格を取得
+    // 2) 各モデルの permaslug に対して stats API を叩いて個別スループットを取得
     const statsMaps = new Map<string, Map<string, EndpointStats>>();
     const fulfilledResults = endpointsResults
       .map((r, idx) => ({ result: r, idx }))
@@ -388,7 +366,7 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
       }
     }
 
-    // 3) 基本情報とスループット・実効価格をマージして EndpointData を構築
+    // 3) 基本情報とスループットをマージして EndpointData を構築
     for (const er of endpointsResults) {
       if (er.status !== "fulfilled" || er.value == null) continue;
       const info = er.value as EndpointsInfo;
@@ -402,8 +380,8 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
           providerSlug: entry.providerSlug,
           variant: entry.variant,
           throughput: stats?.throughput ?? 0,
-          inputPrice: stats?.inputPrice ?? entry.inputPrice,
-          outputPrice: stats?.outputPrice ?? entry.outputPrice,
+          inputPrice: entry.inputPrice,
+          outputPrice: entry.outputPrice,
         };
       });
       result.set(info.localName, endpoints);
