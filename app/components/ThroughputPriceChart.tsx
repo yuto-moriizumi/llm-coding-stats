@@ -28,6 +28,7 @@ function formatPrice(price: number): string {
 }
 
 function blendedPrice(ep: EndpointData, inputRatio: number = 3): number {
+  if (ep.inputPrice == null || ep.outputPrice == null) return NaN;
   return (ep.inputPrice * inputRatio + ep.outputPrice * 1) / (inputRatio + 1);
 }
 
@@ -80,14 +81,23 @@ function CustomTooltip({ active, hoveredPoint, priceRatio = 3 }: CustomTooltipPr
           <span className="text-gray-300">Throughput:</span> {hoveredPoint.throughput} tok/s
         </span>
         <span>
-          <span className="text-gray-300">Blended price:</span> ${bp.toFixed(2)}/1M
+          <span className="text-gray-300">Effective blended price:</span>{" "}
+          {Number.isFinite(bp) ? `$${bp.toFixed(2)}/1M` : "N/A"}
         </span>
         <span>
-          <span className="text-gray-300">Input:</span> ${hoveredPoint.inputPrice.toFixed(2)}/1M
+          <span className="text-gray-300">Effective input:</span>{" "}
+          {hoveredPoint.inputPrice == null ? "N/A" : `$${hoveredPoint.inputPrice.toFixed(2)}/1M`}
         </span>
         <span>
-          <span className="text-gray-300">Output:</span> ${hoveredPoint.outputPrice.toFixed(2)}/1M
+          <span className="text-gray-300">Effective output:</span>{" "}
+          {hoveredPoint.outputPrice == null ? "N/A" : `$${hoveredPoint.outputPrice.toFixed(2)}/1M`}
         </span>
+        {hoveredPoint.cacheHitRate != null && (
+          <span>
+            <span className="text-gray-300">Cache hit rate:</span>{" "}
+            {(hoveredPoint.cacheHitRate * 100).toFixed(1)}%
+          </span>
+        )}
       </div>
     </div>
   );
@@ -171,23 +181,34 @@ export default function ThroughputPriceChart({
       };
     }
 
-    const data = endpoints
-      .filter((ep) => ep.throughput != null && (ep.inputPrice > 0 || ep.outputPrice > 0))
+    const pricedEndpoints = endpoints.filter(
+      (ep) =>
+        ep.throughput != null &&
+        ep.inputPrice != null &&
+        ep.outputPrice != null,
+    );
+    const data = pricedEndpoints
       .map((ep) => ({
         ...ep,
         x: blendedPrice(ep, priceRatio),
         y: ep.throughput,
       }));
 
-    const frontier = computeParetoFrontier(
-      endpoints.filter((ep) => ep.inputPrice > 0 || ep.outputPrice > 0),
-      priceRatio,
-    )
+    const frontier = computeParetoFrontier(pricedEndpoints, priceRatio)
       .map((ep) => ({
         ...ep,
         x: blendedPrice(ep, priceRatio),
         y: ep.throughput,
       }));
+
+    if (data.length === 0) {
+      return {
+        scatterData: [] as ChartPoint[],
+        frontierData: [] as ChartPoint[],
+        priceDomain: [0, 10] as [number, number],
+        throughputDomain: [0, 100] as [number, number],
+      };
+    }
 
     const minPrice = Math.min(...data.map((d) => d.x));
     const maxPrice = Math.max(...data.map((d) => d.x));
@@ -246,7 +267,7 @@ export default function ThroughputPriceChart({
             {modelName}
           </a>
           <span className="ml-2 text-xs font-normal text-gray-500">
-            — Provider-level throughput vs. listed price
+            — Provider-level throughput vs. effective price
           </span>
         </h3>
         <span className="text-xs text-gray-600">
@@ -272,7 +293,7 @@ export default function ThroughputPriceChart({
               tick={{ fill: "#eeeef0", fontSize: 13 }}
               stroke="rgba(255,255,255,0.2)"
               label={{
-                value: `Effective blended price per 1M tokens (${priceRatio}:1 Ratio)`,
+                value: `Effective blended price per 1M tokens (${priceRatio}:1 ratio)`,
                 position: "insideBottom",
                 offset: -10,
                 fill: "#9ca3af",

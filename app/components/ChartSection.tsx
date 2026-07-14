@@ -55,7 +55,7 @@ export default function ChartSection({ models, endpointMap }: ChartSectionProps)
         />
       </div>
 
-      {/* Lower chart: Provider-level throughput vs listed price */}
+      {/* Lower chart: Provider-level throughput vs effective price */}
       {selectedModel && (
         <div className="flex flex-1 flex-col rounded-lg border border-white/5 bg-[#0e0e0e]">
           <ThroughputPriceChart

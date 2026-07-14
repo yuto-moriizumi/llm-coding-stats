@@ -42,8 +42,9 @@ export interface EndpointData {
   providerSlug: string;
   variant: string;
   throughput: number;
-  inputPrice: number;   // prompt price per 1M tokens
-  outputPrice: number;  // completion price per 1M tokens
+  inputPrice: number | null;   // effective prompt price per 1M tokens
+  outputPrice: number | null;  // effective completion price per 1M tokens
+  cacheHitRate: number | null;
 }
 
 /**
@@ -187,10 +188,10 @@ interface EndpointRawInfo {
   providerName: string;
   providerSlug: string;
   variant: string;
-  inputPrice: number;
-  outputPrice: number;
   /** providerName + "::" + providerSlug で stats API とマッチングする */
   key: string;
+  /** effective-pricing API の providerSlug とマッチングするキー */
+  effectiveProviderSlug: string;
 }
 
 interface EndpointsInfo {
@@ -202,6 +203,92 @@ interface EndpointsInfo {
 
 interface EndpointStats {
   throughput: number;
+}
+
+interface EffectiveProviderSummary {
+  providerName?: string;
+  providerSlug?: string;
+  effectiveInputPrice?: number;
+  effectiveOutputPrice?: number;
+  cacheHitRate?: number;
+  totalTokens?: number;
+}
+
+interface EffectivePricingResponse {
+  data?: {
+    providerSummaries?: EffectiveProviderSummary[];
+  };
+}
+
+interface EffectivePricing {
+  inputPrice: number;
+  outputPrice: number;
+  cacheHitRate: number | null;
+}
+
+function providerSlugFromTag(tag: string): string {
+  return tag.split("/")[0].toLowerCase();
+}
+
+function normalizeEffectiveProviderSlug(slug: string): string {
+  const normalized = slug.toLowerCase();
+  const aliases: Record<string, string> = {
+    baidu: "baidu",
+    "baidu-qianfan": "baidu",
+    baseten: "baseten",
+    "base-ten": "baseten",
+  };
+  return aliases[normalized] ?? normalized;
+}
+
+/** effective-pricing APIをプロバイダslug → 実効価格へ変換する。通常価格は参照しない。 */
+async function fetchEffectivePricingMap(
+  permaslug: string,
+): Promise<Map<string, EffectivePricing>> {
+  try {
+    const res = await fetch(
+      `https://openrouter.ai/api/frontend/v1/stats/effective-pricing?permaslug=${encodeURIComponent(permaslug)}&variant=standard`,
+      { signal: AbortSignal.timeout(8000), next: { revalidate: 600 } },
+    );
+    if (!res.ok) {
+      console.warn(
+        `[openrouter] Effective pricing fetch failed for ${permaslug}: ${res.status}`,
+      );
+      return new Map();
+    }
+
+    const json = (await res.json()) as EffectivePricingResponse;
+    const result = new Map<string, EffectivePricing>();
+    for (const summary of json.data?.providerSummaries ?? []) {
+      if (!summary.providerSlug) continue;
+      const inputPrice = summary.effectiveInputPrice;
+      const outputPrice = summary.effectiveOutputPrice;
+      if (
+        typeof inputPrice !== "number" ||
+        !Number.isFinite(inputPrice) ||
+        typeof outputPrice !== "number" ||
+        !Number.isFinite(outputPrice)
+      ) {
+        continue;
+      }
+
+      result.set(normalizeEffectiveProviderSlug(summary.providerSlug), {
+        inputPrice: Math.round(inputPrice * 100) / 100,
+        outputPrice: Math.round(outputPrice * 100) / 100,
+        cacheHitRate:
+          typeof summary.cacheHitRate === "number"
+            ? summary.cacheHitRate
+            : null,
+      });
+    }
+    return result;
+  } catch (err) {
+    console.error(
+      `[openrouter] Error fetching effective pricing for ${permaslug}:`,
+      err,
+    );
+    return new Map();
+  }
 }
 
 /**
@@ -285,7 +372,7 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
   for (let i = 0; i < entries.length; i += BATCH_SIZE) {
     const batch = entries.slice(i, i + BATCH_SIZE);
 
-    // 1) endpoints API で基本情報（プロバイダ・価格）を取得
+    // 1) endpoints API でプロバイダと基本情報を取得する。価格は取得しない。
     const endpointsResults = await Promise.allSettled(
       batch.map(async ([localName, slug]) => {
         const res = await fetch(
@@ -305,19 +392,6 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
 
         const infoList: EndpointRawInfo[] = [];
         for (const ep of eps) {
-          const promptStr = ep.pricing?.prompt;
-          const completionStr = ep.pricing?.completion;
-          if (!promptStr || !completionStr) continue;
-
-          const promptPrice = Number.parseFloat(promptStr);
-          const completionPrice = Number.parseFloat(completionStr);
-          if (
-            Number.isNaN(promptPrice) ||
-            Number.isNaN(completionPrice)
-          ) {
-            continue;
-          }
-
           const providerName = ep.provider_name ?? "unknown";
           const tag = ep.tag ?? "unknown";
           const variant = tag ? (tag.split("/").pop() ?? "standard") : "standard";
@@ -326,9 +400,8 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
             providerName,
             providerSlug: tag,
             variant,
-            inputPrice: Math.round(promptPrice * 1_000_000 * 100) / 100,
-            outputPrice: Math.round(completionPrice * 1_000_000 * 100) / 100,
             key: `${providerName}::${tag}`,
+            effectiveProviderSlug: providerSlugFromTag(tag),
           });
         }
 
@@ -336,8 +409,9 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
       }),
     );
 
-    // 2) 各モデルの permaslug に対して stats API を叩いて個別スループットを取得
+    // 2) 各モデルのpermaslugに対してthroughputとeffective価格を取得する
     const statsMaps = new Map<string, Map<string, EndpointStats>>();
+    const effectivePricingMaps = new Map<string, Map<string, EffectivePricing>>();
     const fulfilledResults = endpointsResults
       .map((r, idx) => ({ result: r, idx }))
       .filter(
@@ -353,16 +427,19 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
       );
 
     const statsPromises = fulfilledResults.map(async (item) => {
-      const statsMap = await fetchEndpointStatsMap(
-        item.result.value.permaslug,
-      );
-      return { localName: item.result.value.localName, statsMap };
+      const { localName, permaslug } = item.result.value;
+      const [statsMap, effectivePricingMap] = await Promise.all([
+        fetchEndpointStatsMap(permaslug),
+        fetchEffectivePricingMap(permaslug),
+      ]);
+      return { localName, statsMap, effectivePricingMap };
     });
 
     const statsResults = await Promise.allSettled(statsPromises);
     for (const sr of statsResults) {
       if (sr.status === "fulfilled") {
         statsMaps.set(sr.value.localName, sr.value.statsMap);
+        effectivePricingMaps.set(sr.value.localName, sr.value.effectivePricingMap);
       }
     }
 
@@ -373,15 +450,20 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
       if (info.infoList.length === 0) continue;
 
       const statsMapForModel = statsMaps.get(info.localName) ?? new Map<string, EndpointStats>();
+      const effectivePricingMap = effectivePricingMaps.get(info.localName) ?? new Map<string, EffectivePricing>();
       const endpoints: EndpointData[] = info.infoList.map((entry) => {
         const stats = statsMapForModel.get(entry.key);
+        const pricing = effectivePricingMap.get(
+          normalizeEffectiveProviderSlug(entry.effectiveProviderSlug),
+        );
         return {
           providerName: entry.providerName,
           providerSlug: entry.providerSlug,
           variant: entry.variant,
           throughput: stats?.throughput ?? 0,
-          inputPrice: entry.inputPrice,
-          outputPrice: entry.outputPrice,
+          inputPrice: pricing?.inputPrice ?? null,
+          outputPrice: pricing?.outputPrice ?? null,
+          cacheHitRate: pricing?.cacheHitRate ?? null,
         };
       });
       result.set(info.localName, endpoints);
