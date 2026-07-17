@@ -36,10 +36,12 @@ npm run start          # Serve the production build
 npm run lint           # Run ESLint
 npm run typecheck      # Run TypeScript type checking
 npm run extract-models # Extract model names and scores from an HTML file
+npm run extract-models -- --write # Update app/data/llm-models.ts from data.html
 ```
 
 `npm run extract-models` はデフォルトで `data.html` を読みます。別ファイルを使う場合はパスを渡します。
 同じモデル名が複数行ある場合は、最も高いスコアの行だけを抽出します。価格が `N/A` のモデルは価格を `0` として出力します。
+`--write` を指定すると、抽出したモデルの Arena Score とモデル一覧を `app/data/llm-models.ts` に反映します。既存モデルの provider、OpenRouter slug、deprecated 設定は維持されます。
 
 ```bash
 npm run extract-models -- ./path/to/data.html
