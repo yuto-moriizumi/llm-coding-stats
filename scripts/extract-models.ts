@@ -20,6 +20,21 @@ type StoredModel = {
 const MODEL_DATA_PATH = resolve(process.cwd(), "app/data/llm-models.ts");
 
 const NEW_MODEL_METADATA: Record<string, Omit<StoredModel, "name" | "arenaScore">> = {
+  "gemini-3.6-flash": {
+    provider: "google",
+    openrouterSlug: "google/gemini-3.6-flash",
+    deprecated: false,
+  },
+  hy3: {
+    provider: "tencent",
+    openrouterSlug: "tencent/hy3",
+    deprecated: false,
+  },
+  "gemini-3.5-flash": {
+    provider: "google",
+    openrouterSlug: "google/gemini-3.5-flash",
+    deprecated: false,
+  },
   "kimi-k3": {
     provider: "moonshot",
     openrouterSlug: "moonshotai/kimi-k3",
