@@ -20,6 +20,26 @@ type StoredModel = {
 const MODEL_DATA_PATH = resolve(process.cwd(), "app/data/llm-models.ts");
 
 const NEW_MODEL_METADATA: Record<string, Omit<StoredModel, "name" | "arenaScore">> = {
+  "claude-opus-5-high": {
+    provider: "anthropic",
+    openrouterSlug: "anthropic/claude-opus-5",
+    deprecated: false,
+  },
+  "claude-opus-5-max": {
+    provider: "anthropic",
+    openrouterSlug: "anthropic/claude-opus-5",
+    deprecated: false,
+  },
+  "gemini-3.5-flash-lite": {
+    provider: "google",
+    openrouterSlug: "google/gemini-3.5-flash-lite",
+    deprecated: false,
+  },
+  "glm-5.2-max": {
+    provider: "zhipu",
+    openrouterSlug: "z-ai/glm-5.2",
+    deprecated: false,
+  },
   "gemini-3.6-flash": {
     provider: "google",
     openrouterSlug: "google/gemini-3.6-flash",
@@ -36,6 +56,11 @@ const NEW_MODEL_METADATA: Record<string, Omit<StoredModel, "name" | "arenaScore"
     deprecated: false,
   },
   "kimi-k3": {
+    provider: "moonshot",
+    openrouterSlug: "moonshotai/kimi-k3",
+    deprecated: false,
+  },
+  "kimi-k3-max": {
     provider: "moonshot",
     openrouterSlug: "moonshotai/kimi-k3",
     deprecated: false,
