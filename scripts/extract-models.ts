@@ -20,6 +20,21 @@ type StoredModel = {
 const MODEL_DATA_PATH = resolve(process.cwd(), "app/data/llm-models.ts");
 
 const NEW_MODEL_METADATA: Record<string, Omit<StoredModel, "name" | "arenaScore">> = {
+  "deepseek-v4-flash-high": {
+    provider: "deepseek",
+    openrouterSlug: "deepseek/deepseek-v4-flash",
+    deprecated: false,
+  },
+  "deepseek-v4-flash-high-preview": {
+    provider: "deepseek",
+    openrouterSlug: "deepseek/deepseek-v4-flash",
+    deprecated: false,
+  },
+  "deepseek-v4-pro-high-preview": {
+    provider: "deepseek",
+    openrouterSlug: "deepseek/deepseek-v4-pro",
+    deprecated: false,
+  },
   "claude-opus-5-high": {
     provider: "anthropic",
     openrouterSlug: "anthropic/claude-opus-5",
@@ -68,6 +83,16 @@ const NEW_MODEL_METADATA: Record<string, Omit<StoredModel, "name" | "arenaScore"
   "gpt-5.6-sol-xhigh (codex-harness)": {
     provider: "openai",
     openrouterSlug: "openai/gpt-5.6-sol",
+    deprecated: false,
+  },
+  "gpt-5.6-luna-xhigh (codex-harness)": {
+    provider: "openai",
+    openrouterSlug: "openai/gpt-5.6-luna",
+    deprecated: false,
+  },
+  "gpt-5.6-terra-xhigh (codex-harness)": {
+    provider: "openai",
+    openrouterSlug: "openai/gpt-5.6-terra",
     deprecated: false,
   },
   inkling: {
