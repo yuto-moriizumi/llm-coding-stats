@@ -1,0 +1,4 @@
+interface:
+  display_name: "Arena Code Data Updater"
+  short_description: "Arena Codeランキングを取得しモデルスコアを安全に更新"
+  default_prompt: "Use $update-arena-code-data to fetch the latest Arena Code leaderboard and update this repository’s model scores."
