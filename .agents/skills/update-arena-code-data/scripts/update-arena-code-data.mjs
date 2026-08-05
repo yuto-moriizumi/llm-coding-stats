@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 const DEFAULT_URL = "https://arena.ai/leaderboard/code";
 const MIN_CREDIBLE_ROWS = 20;
 const SKILL_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const LEADERBOARD_ROW = /\\"rank\\":(?<rank>\d+),\\"rankUpper\\":(?:\d+|null),\\"rankLower\\":(?:\d+|null),\\"modelKey\\":\\"(?<key>.*?)\\",\\"modelDisplayName\\":\\"(?<name>.*?)\\",\\"rating\\":(?<rating>\d+(?:\.\d+)?)/g;
+const LEADERBOARD_ROW = /\\"rank\\":(?<rank>\d+),\\"rankUpper\\":(?:\d+|null),\\"rankLower\\":(?:\d+|null),\\"modelKey\\":\\"(?<key>.*?)\\",\\"modelDisplayName\\":\\"(?<name>.*?)\\",\\"rating\\":(?<rating>\d+(?:\.\d+)?)[^}]*?\\"modelOrganization\\":\\"(?<organization>.*?)\\"/g;
 const MODEL_ENTRY = /(?<prefix>\{\s*name:\s*"(?<name>(?:\\.|[^"\\])*)"[^\n{}]*?arenaScore:\s*)(?<score>\d+)(?<suffix>[^\n{}]*\})/g;
 const VOTE_CUTOFF = /\\"voteCutoffISOString\\":\\"([^"\\]+)\\"/;
 const TOTAL_VOTES = /\\"totalVotes\\":(\d+)/;
@@ -59,12 +59,44 @@ function parseLeaderboard(source) {
   const models = new Map();
   for (const match of source.matchAll(LEADERBOARD_ROW)) {
     const name = decodeJsonString(match.groups.name);
-    const candidate = { name, rating: Number(match.groups.rating), rank: Number(match.groups.rank) };
+    const candidate = { name, organization: decodeJsonString(match.groups.organization), rating: Number(match.groups.rating), rank: Number(match.groups.rank) };
     const current = models.get(name);
     if (!current || candidate.rating > current.rating) models.set(name, candidate);
   }
   if (models.size < MIN_CREDIBLE_ROWS) throw new Error(`Parsed only ${models.size} leaderboard rows; expected at least ${MIN_CREDIBLE_ROWS}. Arena's page structure may have changed.`);
   return models;
+}
+
+const ORGANIZATION_METADATA = new Map([
+  ["Alibaba", { provider: "alibaba", slugPrefix: "qwen" }],
+  ["Anthropic", { provider: "anthropic", slugPrefix: "anthropic" }],
+  ["Arcee AI", { provider: "arcee", slugPrefix: "arcee-ai" }],
+  ["ByteDance", { provider: "bytedance", slugPrefix: "bytedance" }],
+  ["Cohere", { provider: "cohere", slugPrefix: "cohere" }],
+  ["DeepSeek", { provider: "deepseek", slugPrefix: "deepseek" }],
+  ["Google", { provider: "google", slugPrefix: "google" }],
+  ["IBM", { provider: "ibm", slugPrefix: "ibm-granite" }],
+  ["Inception", { provider: "inception", slugPrefix: "inception" }],
+  ["Kuaishou", { provider: "kwai", slugPrefix: "kwai" }],
+  ["Meta", { provider: "meta", slugPrefix: "meta-llama" }],
+  ["MiniMax", { provider: "minimax", slugPrefix: "minimax" }],
+  ["Mistral", { provider: "mistral", slugPrefix: "mistralai" }],
+  ["Moonshot AI", { provider: "moonshot", slugPrefix: "moonshotai" }],
+  ["OpenAI", { provider: "openai", slugPrefix: "openai" }],
+  ["Poolside", { provider: "poolside", slugPrefix: "poolside" }],
+  ["Tencent", { provider: "tencent", slugPrefix: "tencent" }],
+  ["xAI", { provider: "xai", slugPrefix: "x-ai" }],
+  ["Xiaomi", { provider: "xiaomi", slugPrefix: "xiaomi" }],
+  ["Zhipu AI", { provider: "zhipu", slugPrefix: "z-ai" }],
+]);
+
+function inferredMetadata(model) {
+  const known = ORGANIZATION_METADATA.get(model.organization);
+  const provider = known?.provider ?? "other";
+  const slugPrefix = known?.slugPrefix ?? "other";
+  let slugName = model.name;
+  if (provider === "google" && /^gemini-/.test(slugName)) slugName = slugName.replace(/-(?:high|medium|low)$/, "");
+  return { provider, openrouterSlug: `${slugPrefix}/${slugName}` };
 }
 
 async function loadAliases(path) {
@@ -91,6 +123,22 @@ function updateSource(source, scores) {
     return `${groups.prefix}${newScore}${groups.suffix}`;
   });
   return { updated, changes };
+}
+
+function addModels(source, additions) {
+  let updated = source;
+  const added = [];
+  for (const model of [...additions].sort((left, right) => right.arenaScore - left.arenaScore)) {
+    const { provider, openrouterSlug } = inferredMetadata(model);
+    const line = `  { name: ${JSON.stringify(model.name)}, provider: ${JSON.stringify(provider)}, arenaScore: ${model.arenaScore}, openrouterSlug: ${JSON.stringify(openrouterSlug)} },\n`;
+    const entries = [...updated.matchAll(MODEL_ENTRY)];
+    const insertion = entries.find((entry) => Number(entry.groups.score) < model.arenaScore);
+    const index = insertion ? updated.lastIndexOf("\n", insertion.index) + 1 : updated.lastIndexOf("];\n");
+    if (index < 0) throw new Error("Could not locate the LLM_MODELS array terminator");
+    updated = `${updated.slice(0, index)}${line}${updated.slice(index)}`;
+    added.push({ ...model, provider, openrouterSlug });
+  }
+  return { updated, added };
 }
 
 function metadata(source) {
@@ -124,7 +172,11 @@ async function main() {
     }
   }
   if (resolvedScores.size < MIN_CREDIBLE_ROWS) throw new Error(`Matched only ${resolvedScores.size} repository models; refusing to update`);
-  const { updated, changes } = updateSource(registrySource, resolvedScores);
+  const scoreUpdate = updateSource(registrySource, resolvedScores);
+  const unmatchedArenaModels = [...arenaModels.values()].filter((model) => !matchedArenaNames.has(model.name));
+  const additions = unmatchedArenaModels.map((model) => ({ ...model, arenaScore: Math.round(model.rating) }));
+  const { updated, added } = addModels(scoreUpdate.updated, additions);
+  const changes = scoreUpdate.changes;
   const { cutoff, votes } = metadata(page);
   const unmatchedArena = [...arenaModels.keys()].filter((name) => !matchedArenaNames.has(name)).sort();
   const unmatchedRegistry = [...registry.keys()].filter((name) => !resolvedScores.has(name)).sort();
@@ -135,7 +187,9 @@ async function main() {
   console.log(`Matched repository models: ${resolvedScores.size} / ${registry.size}`);
   console.log(`Changed scores: ${changes.length}`);
   for (const { name, oldScore, newScore } of changes) console.log(`  ${name}: ${oldScore} -> ${newScore}`);
-  console.log(`Unmatched Arena models (${unmatchedArena.length}): ${unmatchedArena.join(", ") || "none"}`);
+  console.log(`New models: ${added.length}`);
+  for (const { name, provider, arenaScore, openrouterSlug } of added) console.log(`  ${name}: provider=${provider}, arenaScore=${arenaScore}, openrouterSlug=${openrouterSlug}`);
+  console.log(`Arena models to add (${unmatchedArena.length}): ${unmatchedArena.join(", ") || "none"}`);
   console.log(`Unmatched repository models (${unmatchedRegistry.length}): ${unmatchedRegistry.join(", ") || "none"}`);
   if (options.write) { await atomicWrite(target, updated); console.log(`Updated: ${target}`); }
   else console.log("Dry run only; pass --write to update the registry.");
