@@ -5,7 +5,16 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
-const DEFAULT_URL = "https://arena.ai/leaderboard/code";
+const LEADERBOARDS = {
+  code: {
+    url: "https://arena.ai/leaderboard/code",
+    target: "app/data/llm-models.ts",
+  },
+  chat: {
+    url: "https://arena.ai/leaderboard/text",
+    target: "app/data/chat-models.ts",
+  },
+};
 const MIN_CREDIBLE_ROWS = 20;
 const SKILL_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const LEADERBOARD_ROW = /\\"rank\\":(?<rank>\d+),\\"rankUpper\\":(?:\d+|null),\\"rankLower\\":(?:\d+|null),\\"modelKey\\":\\"(?<key>.*?)\\",\\"modelDisplayName\\":\\"(?<name>.*?)\\",\\"rating\\":(?<rating>\d+(?:\.\d+)?)[^}]*?\\"modelOrganization\\":\\"(?<organization>.*?)\\"/g;
@@ -18,7 +27,8 @@ function usage() {
 
 Options:
   --repo <path>       Repository root (default: current directory)
-  --url <url>         Arena leaderboard URL
+  --leaderboard <key> Leaderboard to update: code or chat (default: code)
+  --url <url>         Override the selected Arena leaderboard URL
   --html <path>       Read saved HTML instead of fetching
   --target <path>     Registry file (default: app/data/llm-models.ts)
   --aliases <path>    JSON alias map
@@ -27,8 +37,8 @@ Options:
 }
 
 function parseArgs(argv) {
-  const options = { repo: process.cwd(), url: DEFAULT_URL, html: undefined, target: undefined, aliases: resolve(SKILL_DIR, "references/model-aliases.json"), write: false };
-  const valueOptions = new Map([["--repo", "repo"], ["--url", "url"], ["--html", "html"], ["--target", "target"], ["--aliases", "aliases"]]);
+  const options = { repo: process.cwd(), leaderboard: "code", url: undefined, html: undefined, target: undefined, aliases: resolve(SKILL_DIR, "references/model-aliases.json"), write: false };
+  const valueOptions = new Map([["--repo", "repo"], ["--leaderboard", "leaderboard"], ["--url", "url"], ["--html", "html"], ["--target", "target"], ["--aliases", "aliases"]]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--help") { console.log(usage()); process.exit(0); }
@@ -40,6 +50,7 @@ function parseArgs(argv) {
     options[key] = value;
     index += 1;
   }
+  if (!(options.leaderboard in LEADERBOARDS)) throw new Error(`Invalid leaderboard: ${options.leaderboard}. Expected code or chat.`);
   return options;
 }
 
@@ -155,8 +166,10 @@ async function atomicWrite(path, content) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const target = resolve(options.target ?? resolve(options.repo, "app/data/llm-models.ts"));
-  const page = options.html ? await readFile(resolve(options.html), "utf8") : await fetchHtml(options.url);
+  const leaderboard = LEADERBOARDS[options.leaderboard];
+  const sourceUrl = options.url ?? leaderboard.url;
+  const target = resolve(options.target ?? resolve(options.repo, leaderboard.target));
+  const page = options.html ? await readFile(resolve(options.html), "utf8") : await fetchHtml(sourceUrl);
   const arenaModels = parseLeaderboard(page);
   const aliases = await loadAliases(resolve(options.aliases));
   const registrySource = await readFile(target, "utf8");
@@ -174,13 +187,18 @@ async function main() {
   if (resolvedScores.size < MIN_CREDIBLE_ROWS) throw new Error(`Matched only ${resolvedScores.size} repository models; refusing to update`);
   const scoreUpdate = updateSource(registrySource, resolvedScores);
   const unmatchedArenaModels = [...arenaModels.values()].filter((model) => !matchedArenaNames.has(model.name));
-  const additions = unmatchedArenaModels.map((model) => ({ ...model, arenaScore: Math.round(model.rating) }));
+  // Code data remains exhaustive. Chat data is intentionally restricted to
+  // models with reviewed OpenRouter metadata already present in its registry.
+  const additions = options.leaderboard === "code"
+    ? unmatchedArenaModels.map((model) => ({ ...model, arenaScore: Math.round(model.rating) }))
+    : [];
   const { updated, added } = addModels(scoreUpdate.updated, additions);
   const changes = scoreUpdate.changes;
   const { cutoff, votes } = metadata(page);
   const unmatchedArena = [...arenaModels.keys()].filter((name) => !matchedArenaNames.has(name)).sort();
   const unmatchedRegistry = [...registry.keys()].filter((name) => !resolvedScores.has(name)).sort();
-  console.log(`Source: ${options.html ?? options.url}`);
+  console.log(`Leaderboard: ${options.leaderboard}`);
+  console.log(`Source: ${options.html ?? sourceUrl}`);
   console.log(`Vote cutoff: ${cutoff ?? "unknown"}`);
   console.log(`Total votes: ${votes ?? "unknown"}`);
   console.log(`Parsed Arena models: ${arenaModels.size}`);
@@ -189,7 +207,7 @@ async function main() {
   for (const { name, oldScore, newScore } of changes) console.log(`  ${name}: ${oldScore} -> ${newScore}`);
   console.log(`New models: ${added.length}`);
   for (const { name, provider, arenaScore, openrouterSlug } of added) console.log(`  ${name}: provider=${provider}, arenaScore=${arenaScore}, openrouterSlug=${openrouterSlug}`);
-  console.log(`Arena models to add (${unmatchedArena.length}): ${unmatchedArena.join(", ") || "none"}`);
+  console.log(`${options.leaderboard === "code" ? "Arena models to add" : "Unmatched Arena models (not added to chat registry)"} (${unmatchedArena.length}): ${unmatchedArena.join(", ") || "none"}`);
   console.log(`Unmatched repository models (${unmatchedRegistry.length}): ${unmatchedRegistry.join(", ") || "none"}`);
   if (options.write) { await atomicWrite(target, updated); console.log(`Updated: ${target}`); }
   else console.log("Dry run only; pass --write to update the registry.");

@@ -1,10 +1,11 @@
 # LLM Coding Stats
 
-LLM の性能、価格、スループットを比較する Next.js アプリです。Arena Score と 1M tokens あたりの blended price を散布図で表示し、モデルを選択すると OpenRouter 上の provider endpoint ごとの価格と throughput も確認できます。
+LLM の性能、価格、スループットを比較する Next.js アプリです。`/` では Code Arena、`/chat` では Text Arena Overall のスコアと 1M tokens あたりの blended price を散布図で表示し、モデルを選択すると OpenRouter 上の provider endpoint ごとの価格と throughput も確認できます。
 
 ## Data Sources
 
 - `app/data/llm-models.ts`: モデル名、provider、OpenRouter slug、Arena Score、deprecated フラグを管理します。
+- `app/data/chat-models.ts`: Text Arena Overall のモデルとスコアを、Code Arena データとは独立して管理します。
 - `app/data/llm-definitions.ts`: モデル型、provider の表示設定、blended price 計算を管理します。
 - OpenRouter API: 価格と throughput を実行時に取得します。価格が取得できない場合は `0` として扱います。
 - `app/lib/openrouter.ts`: OpenRouter API fetch と10分キャッシュを管理します。
@@ -36,15 +37,17 @@ npm run start          # Serve the production build
 npm run lint           # Run ESLint
 npm run typecheck      # Run TypeScript type checking
 npm run extract-models # Extract model names and scores from an HTML file
-npm run extract-models -- --write # Update app/data/llm-models.ts from data.html
+npm run extract-models -- --write --target code # Update Code Arena data
+npm run extract-models -- --write --target chat # Update Text Arena data
 ```
 
 `npm run extract-models` はデフォルトで `data.html` を読みます。別ファイルを使う場合はパスを渡します。
 同じモデル名が複数行ある場合は、最も高いスコアの行だけを抽出します。価格が `N/A` のモデルは価格を `0` として出力します。
-`--write` を指定すると、抽出したモデルの Arena Score とモデル一覧を `app/data/llm-models.ts` に反映します。既存モデルの provider、OpenRouter slug、deprecated 設定は維持されます。
+`--write` を指定すると、抽出したモデルの Arena Score とモデル一覧を対象ファイルに反映します。`--target code`（既定値）は `app/data/llm-models.ts`、`--target chat` は `app/data/chat-models.ts` を更新します。既存モデルの provider、OpenRouter slug、deprecated 設定は維持され、未知のモデルはメタデータを追加するまで安全にエラーになります。
 
 ```bash
 npm run extract-models -- ./path/to/data.html
+npm run extract-models -- ./path/to/text-arena.html --target chat
 ```
 
 ## Updating Model Data
