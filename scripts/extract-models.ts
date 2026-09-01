@@ -17,7 +17,12 @@ type StoredModel = {
   deprecated: boolean;
 };
 
-const MODEL_DATA_PATH = resolve(process.cwd(), "app/data/llm-models.ts");
+type Target = "code" | "chat";
+
+const TARGETS: Record<Target, { path: string; exportName: string }> = {
+  code: { path: "app/data/llm-models.ts", exportName: "LLM_MODELS" },
+  chat: { path: "app/data/chat-models.ts", exportName: "CHAT_MODELS" },
+};
 
 const NEW_MODEL_METADATA: Record<string, Omit<StoredModel, "name" | "arenaScore">> = {
   "deepseek-v4-flash-high": {
@@ -148,8 +153,8 @@ function extractModels(html: string): ExtractedModel[] {
   return [...uniqueModels.values()];
 }
 
-function readStoredModels(): Map<string, StoredModel> {
-  const source = readFileSync(MODEL_DATA_PATH, "utf8");
+function readStoredModels(modelDataPath: string): Map<string, StoredModel> {
+  const source = readFileSync(modelDataPath, "utf8");
   const models = new Map<string, StoredModel>();
   const entryPattern = /\{\s*name: ("(?:\\.|[^"\\])*")[^\n]*\}/g;
 
@@ -174,14 +179,22 @@ function readStoredModels(): Map<string, StoredModel> {
   return models;
 }
 
-function writeModelData(extractedModels: ExtractedModel[]): void {
-  const storedModels = readStoredModels();
-  const entries = extractedModels.map(({ modelName, score }) => {
+function writeModelData(
+  extractedModels: ExtractedModel[],
+  modelDataPath: string,
+  exportName: string,
+  existingOnly: boolean,
+): void {
+  const storedModels = readStoredModels(modelDataPath);
+  const modelsToWrite = existingOnly
+    ? extractedModels.filter(({ modelName }) => storedModels.has(modelName))
+    : extractedModels;
+  const entries = modelsToWrite.map(({ modelName, score }) => {
     const existingName =
       modelName === "gpt-5.6-sol-xhigh (codex-harness)"
         ? "gpt-5.6-sol-xhigh"
         : modelName;
-    const existing = storedModels.get(existingName);
+    const existing = storedModels.get(existingName) ?? storedModels.get(modelName);
     const metadata = existing ?? NEW_MODEL_METADATA[modelName];
     if (!metadata) {
       throw new Error(`Missing metadata for newly discovered model: ${modelName}`);
@@ -191,12 +204,18 @@ function writeModelData(extractedModels: ExtractedModel[]): void {
     return `  { name: ${JSON.stringify(modelName)}, provider: "${metadata.provider}", arenaScore: ${score}${deprecated}, openrouterSlug: "${metadata.openrouterSlug}" },`;
   });
 
-  const source = readFileSync(MODEL_DATA_PATH, "utf8");
-  const updated = source.replace(
-    /export const LLM_MODELS: LLMModelDefinition\[\] = \[[\s\S]*?\n\];/,
-    `export const LLM_MODELS: LLMModelDefinition[] = [\n${entries.join("\n")}\n];`,
+  const source = readFileSync(modelDataPath, "utf8");
+  const exportPattern = new RegExp(
+    `export const ${exportName}: LLMModelDefinition\\[\\] = \\[([\\s\\S]*?)\\n\\];`,
   );
-  writeFileSync(MODEL_DATA_PATH, updated);
+  if (!exportPattern.test(source)) {
+    throw new Error(`Could not find ${exportName} in ${modelDataPath}`);
+  }
+  const updated = source.replace(
+    exportPattern,
+    `export const ${exportName}: LLMModelDefinition[] = [\n${entries.join("\n")}\n];`,
+  );
+  writeFileSync(modelDataPath, updated);
 }
 
 function stripTags(html: string): string {
@@ -206,13 +225,23 @@ function stripTags(html: string): string {
 function main() {
   const args = process.argv.slice(2);
   const write = args.includes("--write");
-  const inputPath = resolve(process.cwd(), args.find((arg) => arg !== "--write") ?? "data.html");
+  const targetIndex = args.indexOf("--target");
+  const target = (targetIndex === -1 ? "code" : args[targetIndex + 1]) as Target;
+  if (!(target in TARGETS)) {
+    throw new Error(`Invalid target: ${target}. Expected code or chat.`);
+  }
+  const positionalArgs = args.filter(
+    (arg, index) => arg !== "--write" && arg !== "--target" && index !== targetIndex + 1,
+  );
+  const inputPath = resolve(process.cwd(), positionalArgs[0] ?? "data.html");
+  const targetConfig = TARGETS[target];
+  const modelDataPath = resolve(process.cwd(), targetConfig.path);
   const html = readFileSync(inputPath, "utf8");
   const models = extractModels(html);
 
   if (write) {
-    writeModelData(models);
-    console.log(`Updated ${MODEL_DATA_PATH} with ${models.length} models.`);
+    writeModelData(models, modelDataPath, targetConfig.exportName, target === "chat");
+    console.log(`Updated ${modelDataPath} from ${models.length} extracted models.`);
   }
 
   for (const { modelName, score, inputPrice, outputPrice } of models) {

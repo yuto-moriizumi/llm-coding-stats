@@ -1,5 +1,7 @@
 // OpenRouter frontend API — throughput (tokens/s) and pricing data fetching
 
+import type { LLMModelDefinition } from "../data/llm-definitions";
+
 interface RoutingHeuristics {
   p50_throughput_2_hours?: number;
   p50_throughput?: number;
@@ -53,9 +55,9 @@ export interface EndpointData {
  * ローカルのモデル名 (例: claude-opus-4-6) と OpenRouter の slug
  * (例: anthropic/claude-opus-4.6) は形式が異なるため、明示的なマッピングが必要。
  */
-const MODEL_NAME_TO_OPENROUTER_SLUG: Record<string, string> = Object.fromEntries(
-  LLM_MODELS.map((model) => [model.name, model.openrouterSlug]),
-);
+function modelSlugEntries(models: readonly LLMModelDefinition[]) {
+  return models.map((model) => [model.name, model.openrouterSlug] as const);
+}
 
 // ISR キャッシュ: APIレスポンスが5MB超でNext.jsデータキャッシュの上限(2MB)を超えるため、
 // モジュールレベルで throughput Map のみをキャッシュする。
@@ -70,10 +72,17 @@ const CACHE_TTL_MS = 600_000; // 10分
  * APIレスポンスが5MB超でNext.jsのISRキャッシュ上限を超えるため、
  * モジュールレベルのキャッシュ (10分TTL) でISRを実現する。
  */
-export async function fetchThroughputMap(): Promise<Map<string, number>> {
+export async function fetchThroughputMap(
+  models: readonly LLMModelDefinition[],
+): Promise<Map<string, number>> {
   const now = Date.now();
   if (cachedMap && now - cachedAt < CACHE_TTL_MS) {
-    return cachedMap;
+    return new Map(
+      modelSlugEntries(models).flatMap(([name, slug]) => {
+        const throughput = cachedMap?.get(slug);
+        return throughput == null ? [] : [[name, throughput] as const];
+      }),
+    );
   }
 
   const throughputBySlug = new Map<string, number>();
@@ -92,7 +101,7 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
     const json: CatalogResponse = await res.json();
 
     // フォールバック対象をマッピングに含まれるモデルのみに限定
-    const targetSlugs = new Set<string>(Object.values(MODEL_NAME_TO_OPENROUTER_SLUG));
+    const targetSlugs = new Set(models.map((model) => model.openrouterSlug));
 
     for (const model of json.data) {
       const slug = model.slug;
@@ -166,22 +175,24 @@ export async function fetchThroughputMap(): Promise<Map<string, number>> {
 
   // ローカルモデル名 → throughput の Map に変換
   const result = new Map<string, number>();
-  for (const [localName, slug] of Object.entries(MODEL_NAME_TO_OPENROUTER_SLUG)) {
+  for (const [localName, slug] of modelSlugEntries(models)) {
     const throughput = throughputBySlug.get(slug);
     if (throughput != null) {
       result.set(localName, Math.round(throughput));
     }
   }
 
-  cachedMap = result;
+  cachedMap = throughputBySlug;
   cachedAt = now;
 
   return result;
 }
 
 // ─── Endpoint キャッシュ ──────────────────────────────────────
-let cachedEndpointMap: Map<string, EndpointData[]> | null = null;
-let cachedEndpointAt = 0;
+const cachedEndpointMaps = new Map<
+  string,
+  { data: Map<string, EndpointData[]>; cachedAt: number }
+>();
 const ENDPOINT_CACHE_TTL_MS = 600_000; // 10分
 
 interface EndpointRawInfo {
@@ -359,14 +370,18 @@ async function fetchEndpointStatsMap(
  * スループットはモデルレベルの catalaog/stats ではなく、
  * stats/endpoint API のエンドポイント個別値を使用する。
  */
-export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
+export async function fetchEndpointMap(
+  models: readonly LLMModelDefinition[],
+): Promise<Map<string, EndpointData[]>> {
   const now = Date.now();
-  if (cachedEndpointMap && now - cachedEndpointAt < ENDPOINT_CACHE_TTL_MS) {
-    return cachedEndpointMap;
+  const cacheKey = models.map((model) => `${model.name}:${model.openrouterSlug}`).join("|");
+  const cached = cachedEndpointMaps.get(cacheKey);
+  if (cached && now - cached.cachedAt < ENDPOINT_CACHE_TTL_MS) {
+    return cached.data;
   }
 
   const result = new Map<string, EndpointData[]>();
-  const entries = Object.entries(MODEL_NAME_TO_OPENROUTER_SLUG);
+  const entries = modelSlugEntries(models);
   const BATCH_SIZE = 5;
 
   for (let i = 0; i < entries.length; i += BATCH_SIZE) {
@@ -470,8 +485,7 @@ export async function fetchEndpointMap(): Promise<Map<string, EndpointData[]>> {
     }
   }
 
-  cachedEndpointMap = result;
-  cachedEndpointAt = now;
+  cachedEndpointMaps.set(cacheKey, { data: result, cachedAt: now });
 
   return result;
 }
@@ -501,10 +515,17 @@ interface V1ModelsResponse {
  *
  * pricing の値は「1トークンあたりのUSD」なので、1Mトークン単位に変換する。
  */
-export async function fetchPricingMap(): Promise<Map<string, ModelPricing>> {
+export async function fetchPricingMap(
+  models: readonly LLMModelDefinition[],
+): Promise<Map<string, ModelPricing>> {
   const now = Date.now();
   if (cachedPricingMap && now - cachedPricingAt < PRICING_CACHE_TTL_MS) {
-    return cachedPricingMap;
+    return new Map(
+      modelSlugEntries(models).flatMap(([name, slug]) => {
+        const pricing = cachedPricingMap?.get(slug);
+        return pricing == null ? [] : [[name, pricing] as const];
+      }),
+    );
   }
 
   const pricingBySlug = new Map<string, ModelPricing>();
@@ -549,16 +570,15 @@ export async function fetchPricingMap(): Promise<Map<string, ModelPricing>> {
 
   // ローカルモデル名 → pricing の Map に変換
   const result = new Map<string, ModelPricing>();
-  for (const [localName, slug] of Object.entries(MODEL_NAME_TO_OPENROUTER_SLUG)) {
+  for (const [localName, slug] of modelSlugEntries(models)) {
     const pricing = pricingBySlug.get(slug);
     if (pricing != null) {
       result.set(localName, pricing);
     }
   }
 
-  cachedPricingMap = result;
+  cachedPricingMap = pricingBySlug;
   cachedPricingAt = now;
 
   return result;
 }
-import { LLM_MODELS } from "../data/llm-models";
