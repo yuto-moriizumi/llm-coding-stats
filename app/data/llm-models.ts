@@ -1,8 +1,8 @@
 import type { LLMModelDefinition } from "./llm-definitions";
 
 export const LLM_MODELS: LLMModelDefinition[] = [
-  { name: "claude-fable-5.1-max", provider: "anthropic", arenaScore: 1765, openrouterSlug: "anthropic/claude-fable-5.1-max" },
-  { name: "qwen3.8-max-0902", provider: "alibaba", arenaScore: 1688, openrouterSlug: "qwen/qwen3.8-max-0902" },
+  { name: "claude-fable-5.1-max", provider: "anthropic", arenaScore: 1765, openrouterSlug: "anthropic/claude-fable-5.1" },
+  { name: "qwen3.8-max-0902", provider: "alibaba", arenaScore: 1688, openrouterSlug: "qwen/qwen3.8-max" },
   { name: "claude-opus-5-max", provider: "anthropic", arenaScore: 1687, openrouterSlug: "anthropic/claude-opus-5" },
   { name: "kimi-k3-max", provider: "moonshot", arenaScore: 1674, openrouterSlug: "moonshotai/kimi-k3" },
   { name: "qwen3.8-max", provider: "alibaba", arenaScore: 1669, openrouterSlug: "qwen/qwen3.8-max" },

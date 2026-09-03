@@ -32,13 +32,15 @@ Options:
   --html <path>       Read saved HTML instead of fetching
   --target <path>     Registry file (default: app/data/llm-models.ts)
   --aliases <path>    JSON alias map
+  --openrouter-json <path>  Saved OpenRouter /api/v1/models response (offline)
+  --slug-overrides <path>  Reviewed Arena-name-to-OpenRouter-ID JSON map
   --write             Apply changes; otherwise perform a dry run
   --help              Show this help`;
 }
 
 function parseArgs(argv) {
-  const options = { repo: process.cwd(), leaderboard: "code", url: undefined, html: undefined, target: undefined, aliases: resolve(SKILL_DIR, "references/model-aliases.json"), write: false };
-  const valueOptions = new Map([["--repo", "repo"], ["--leaderboard", "leaderboard"], ["--url", "url"], ["--html", "html"], ["--target", "target"], ["--aliases", "aliases"]]);
+  const options = { repo: process.cwd(), leaderboard: "code", url: undefined, html: undefined, target: undefined, aliases: resolve(SKILL_DIR, "references/model-aliases.json"), slugOverrides: resolve(SKILL_DIR, "references/openrouter-slugs.json"), write: false };
+  const valueOptions = new Map([["--repo", "repo"], ["--leaderboard", "leaderboard"], ["--url", "url"], ["--html", "html"], ["--target", "target"], ["--aliases", "aliases"], ["--openrouter-json", "openrouterJson"], ["--slug-overrides", "slugOverrides"]]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--help") { console.log(usage()); process.exit(0); }
@@ -101,13 +103,13 @@ const ORGANIZATION_METADATA = new Map([
   ["Zhipu AI", { provider: "zhipu", slugPrefix: "z-ai" }],
 ]);
 
-function inferredMetadata(model) {
+function inferredMetadata(model, slugOverrides) {
   const known = ORGANIZATION_METADATA.get(model.organization);
   const provider = known?.provider ?? "other";
   const slugPrefix = known?.slugPrefix ?? "other";
   let slugName = model.name;
   if (provider === "google" && /^gemini-/.test(slugName)) slugName = slugName.replace(/-(?:high|medium|low)$/, "");
-  return { provider, openrouterSlug: `${slugPrefix}/${slugName}` };
+  return { provider, openrouterSlug: slugOverrides[model.name] ?? `${slugPrefix}/${slugName}` };
 }
 
 async function loadAliases(path) {
@@ -136,11 +138,11 @@ function updateSource(source, scores) {
   return { updated, changes };
 }
 
-function addModels(source, additions) {
+function addModels(source, additions, slugOverrides) {
   let updated = source;
   const added = [];
   for (const model of [...additions].sort((left, right) => right.arenaScore - left.arenaScore)) {
-    const { provider, openrouterSlug } = inferredMetadata(model);
+    const { provider, openrouterSlug } = inferredMetadata(model, slugOverrides);
     const line = `  { name: ${JSON.stringify(model.name)}, provider: ${JSON.stringify(provider)}, arenaScore: ${model.arenaScore}, openrouterSlug: ${JSON.stringify(openrouterSlug)} },\n`;
     const entries = [...updated.matchAll(MODEL_ENTRY)];
     const insertion = entries.find((entry) => Number(entry.groups.score) < model.arenaScore);
@@ -164,6 +166,56 @@ async function atomicWrite(path, content) {
   catch (error) { await unlink(temporary).catch(() => {}); throw error; }
 }
 
+async function loadOpenRouterCatalog(path) {
+  let data;
+  if (path) {
+    data = JSON.parse(await readFile(resolve(path), "utf8"));
+  } else {
+    const response = await fetch("https://openrouter.ai/api/v1/models", { signal: AbortSignal.timeout(30_000) });
+    if (!response.ok) throw new Error(`OpenRouter returned HTTP ${response.status}; cannot verify chart visibility`);
+    data = await response.json();
+  }
+  if (!Array.isArray(data?.data) || data.data.length === 0) throw new Error("Invalid or empty OpenRouter catalog; cannot verify chart visibility");
+  const catalog = new Map();
+  for (const model of data.data) {
+    const slug = model?.id ?? model?.slug;
+    if (typeof slug !== "string" || !slug || catalog.has(slug)) throw new Error("Invalid or duplicate OpenRouter model ID");
+    catalog.set(slug, model);
+  }
+  return catalog;
+}
+
+function checkVisibility(source, catalog) {
+  const blockers = [];
+  let visible = 0;
+  let deprecated = 0;
+  for (const match of source.matchAll(MODEL_ENTRY)) {
+    const name = decodeJsonString(match.groups.name);
+    // Deprecated entries are intentionally hidden by the default chart filter.
+    if (/\bdeprecated:\s*true\b/.test(match[0])) { deprecated += 1; continue; }
+    const slugMatch = match[0].match(/\bopenrouterSlug:\s*"((?:\\.|[^"\\])*)"/);
+    const slug = slugMatch ? decodeJsonString(slugMatch[1]) : undefined;
+    const model = catalog.get(slug);
+    let reason;
+    if (!model) {
+      reason = "ID missing from OpenRouter catalog";
+    } else {
+      const values = [model.pricing?.prompt, model.pricing?.completion];
+      const prices = values.map((value) => typeof value === "string" && value.trim() ? Number(value) : NaN);
+      // Match fetchPricingMap's per-million conversion and cent rounding,
+      // then ParetoChart's positive-price filter. Reject invalid prices too.
+      const rounded = prices.map((price) => Math.round(price * 1_000_000 * 100) / 100);
+      if (prices.some((price) => !Number.isFinite(price) || price < 0) || rounded.some((price) => !Number.isFinite(price))) reason = "invalid or missing prompt/completion pricing";
+      else if (!rounded.some((price) => price > 0)) reason = "both displayed prices round to zero; chart would hide this model";
+    }
+    if (reason) blockers.push(`${name} [${slug ?? "no slug"}]: ${reason}`);
+    else visible += 1;
+  }
+  console.log(`Chart visibility: ${visible} priced, ${deprecated} intentionally deprecated, ${blockers.length} blocked`);
+  for (const blocker of blockers) console.log(`  BLOCKED: ${blocker}`);
+  if (blockers.length) throw new Error("Chart visibility validation failed; this invocation wrote no registry. Agent: follow SKILL.md's autonomous repair loop: research exact identities in OpenRouter/provider sources, repair verified slug mappings, and rerun until resolved. Escalate only after exhausting relevant evidence; do not hide unresolved models or invent prices.");
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const leaderboard = LEADERBOARDS[options.leaderboard];
@@ -172,6 +224,7 @@ async function main() {
   const page = options.html ? await readFile(resolve(options.html), "utf8") : await fetchHtml(sourceUrl);
   const arenaModels = parseLeaderboard(page);
   const aliases = await loadAliases(resolve(options.aliases));
+  const slugOverrides = await loadAliases(resolve(options.slugOverrides));
   const registrySource = await readFile(target, "utf8");
   const registry = parseRegistry(registrySource);
   const resolvedScores = new Map();
@@ -192,7 +245,7 @@ async function main() {
   const additions = options.leaderboard === "code"
     ? unmatchedArenaModels.map((model) => ({ ...model, arenaScore: Math.round(model.rating) }))
     : [];
-  const { updated, added } = addModels(scoreUpdate.updated, additions);
+  const { updated, added } = addModels(scoreUpdate.updated, additions, slugOverrides);
   const changes = scoreUpdate.changes;
   const { cutoff, votes } = metadata(page);
   const unmatchedArena = [...arenaModels.keys()].filter((name) => !matchedArenaNames.has(name)).sort();
@@ -209,6 +262,9 @@ async function main() {
   for (const { name, provider, arenaScore, openrouterSlug } of added) console.log(`  ${name}: provider=${provider}, arenaScore=${arenaScore}, openrouterSlug=${openrouterSlug}`);
   console.log(`${options.leaderboard === "code" ? "Arena models to add" : "Unmatched Arena models (not added to chat registry)"} (${unmatchedArena.length}): ${unmatchedArena.join(", ") || "none"}`);
   console.log(`Unmatched repository models (${unmatchedRegistry.length}): ${unmatchedRegistry.join(", ") || "none"}`);
+  console.log(`OpenRouter source: ${options.openrouterJson ?? "https://openrouter.ai/api/v1/models (live)"}`);
+  const catalog = await loadOpenRouterCatalog(options.openrouterJson);
+  checkVisibility(updated, catalog);
   if (options.write) { await atomicWrite(target, updated); console.log(`Updated: ${target}`); }
   else console.log("Dry run only; pass --write to update the registry.");
 }

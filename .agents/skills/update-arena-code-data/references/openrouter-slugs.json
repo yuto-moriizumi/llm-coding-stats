@@ -1,0 +1,4 @@
+{
+  "claude-fable-5.1-max": "anthropic/claude-fable-5.1",
+  "qwen3.8-max-0902": "qwen/qwen3.8-max"
+}

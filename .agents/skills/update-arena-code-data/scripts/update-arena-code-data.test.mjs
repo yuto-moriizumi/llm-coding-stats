@@ -1,0 +1,97 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+
+const script = fileURLToPath(new URL("./update-arena-code-data.mjs", import.meta.url));
+const newNames = ["claude-fable-5.1-max", "qwen3.8-max-0902"];
+
+async function fixture(t, { additions = [], existingSlug, pricing, catalogOverride, deprecated = false } = {}) {
+  const dir = await mkdtemp(join(tmpdir(), "arena-visibility-test-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const models = Array.from({ length: 20 }, (_, i) => ({
+    name: `model-${i}`, slug: i === 0 && existingSlug ? existingSlug : `anthropic/model-${i}`,
+  }));
+  const source = `export const LLM_MODELS = [\n${models.map((m, i) => `  { name: "${m.name}", provider: "anthropic", arenaScore: ${1500 - i}, openrouterSlug: "${m.slug}"${i === 0 && deprecated ? ", deprecated: true" : ""} },`).join("\n")}\n];\n`;
+  const rows = [...models.map(m => m.name), ...additions].map((name, i) => ({
+    rank: i + 1, rankUpper: null, rankLower: null, modelKey: name, modelDisplayName: name,
+    rating: 1500 - i, modelOrganization: name.startsWith("qwen") ? "Alibaba" : "Anthropic",
+  }));
+  const catalog = { data: models.map((m, i) => ({
+    id: `anthropic/model-${i}`, pricing: i === 0 && pricing !== undefined ? pricing : { prompt: "0.000001", completion: "0.000002" },
+  })) };
+  catalog.data.push(
+    { id: "anthropic/claude-fable-5.1", pricing: { prompt: "0.00001", completion: "0.00005" } },
+    { id: "qwen/qwen3.8-max", pricing: { prompt: "0.000002", completion: "0.000006" } },
+  );
+  const target = join(dir, "models.ts");
+  const html = join(dir, "arena.html");
+  const json = join(dir, "openrouter.json");
+  await Promise.all([
+    writeFile(target, source),
+    writeFile(html, JSON.stringify(JSON.stringify(rows))),
+    writeFile(json, JSON.stringify(catalogOverride ?? catalog)),
+  ]);
+  return {
+    source, target,
+    run: (...args) => spawnSync(process.execPath, [script, "--target", target, "--html", html, "--openrouter-json", json, ...args], { encoding: "utf8" }),
+  };
+}
+
+test("reviewed Fable/Qwen IDs are used; dry run preserves bytes; write preserves existing metadata", async t => {
+  const f = await fixture(t, { additions: newNames });
+  let result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await readFile(f.target, "utf8"), f.source);
+  result = f.run("--write");
+  assert.equal(result.status, 0, result.stderr);
+  const updated = await readFile(f.target, "utf8");
+  assert.match(updated, /name: "claude-fable-5.1-max"[^\n]*openrouterSlug: "anthropic\/claude-fable-5.1"/);
+  assert.match(updated, /name: "qwen3.8-max-0902"[^\n]*openrouterSlug: "qwen\/qwen3.8-max"/);
+  assert.equal(updated.split("\n").filter(line => !newNames.some(name => line.includes(`name: "${name}"`))).join("\n"), f.source);
+});
+
+for (const [label, options] of [
+  ["unknown inferred ID for a new model", { additions: ["unknown-max"] }],
+  ["unknown existing ID even with unchanged score", { existingSlug: "anthropic/missing" }],
+  ["missing prices", { pricing: {} }],
+  ["non-finite prices", { pricing: { prompt: "Infinity", completion: "0.1" } }],
+  ["negative price", { pricing: { prompt: "-1", completion: "0.1" } }],
+  ["negative price that rounds to zero", { pricing: { prompt: "-0.000000001", completion: "0.1" } }],
+  ["zero prices", { pricing: { prompt: "0", completion: "0" } }],
+  ["prices rounded to zero by the app", { pricing: { prompt: "0.000000001", completion: "0.000000001" } }],
+  ["empty catalog", { catalogOverride: { data: [] } }],
+  ["malformed catalog", { catalogOverride: { error: "unavailable" } }],
+]) {
+  test(`${label} blocks dry run and write without modifying target`, async t => {
+    const f = await fixture(t, options);
+    for (const args of [[], ["--write"]]) {
+      const result = f.run(...args);
+      assert.equal(result.status, 1, result.stdout);
+      assert.equal(await readFile(f.target, "utf8"), f.source);
+    }
+  });
+}
+
+test("chat does not add unmatched models or validate their inferred IDs", async t => {
+  const f = await fixture(t, { additions: ["unknown-max"] });
+  const result = f.run("--leaderboard", "chat", "--write");
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await readFile(f.target, "utf8"), f.source);
+});
+
+test("intentionally deprecated entries remain unchanged and do not block", async t => {
+  const f = await fixture(t, { existingSlug: "anthropic/retired", deprecated: true });
+  const result = f.run("--write");
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(await readFile(f.target, "utf8"), f.source);
+});
+
+test("zero input price is allowed when output price remains positive", async t => {
+  const f = await fixture(t, { pricing: { prompt: "0", completion: "0.000001" } });
+  const result = f.run("--write");
+  assert.equal(result.status, 0, result.stderr);
+});
