@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 const script = fileURLToPath(new URL("./update-arena-code-data.mjs", import.meta.url));
 const newNames = ["claude-fable-5.1-max", "qwen3.8-max-0902"];
 
-async function fixture(t, { additions = [], existingSlug, pricing, catalogOverride, deprecated = false } = {}) {
+async function fixture(t, { leaderboard = "code", additions = [], existingSlug, pricing, catalogOverride, deprecated = false } = {}) {
   const dir = await mkdtemp(join(tmpdir(), "arena-visibility-test-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const models = Array.from({ length: 20 }, (_, i) => ({
@@ -37,12 +37,13 @@ async function fixture(t, { additions = [], existingSlug, pricing, catalogOverri
   ]);
   return {
     source, target,
-    run: (...args) => spawnSync(process.execPath, [script, "--target", target, "--html", html, "--openrouter-json", json, ...args], { encoding: "utf8" }),
+    run: (...args) => spawnSync(process.execPath, [script, "--leaderboard", leaderboard, "--target", target, "--html", html, "--openrouter-json", json, ...args], { encoding: "utf8" }),
   };
 }
 
-test("reviewed Fable/Qwen IDs are used; dry run preserves bytes; write preserves existing metadata", async t => {
-  const f = await fixture(t, { additions: newNames });
+for (const leaderboard of ["code", "chat"]) {
+test(`${leaderboard}: reviewed Fable/Qwen IDs are used; dry run preserves bytes; write preserves existing metadata`, async t => {
+  const f = await fixture(t, { leaderboard, additions: newNames });
   let result = f.run();
   assert.equal(result.status, 0, result.stderr);
   assert.equal(await readFile(f.target, "utf8"), f.source);
@@ -66,8 +67,8 @@ for (const [label, options] of [
   ["empty catalog", { catalogOverride: { data: [] } }],
   ["malformed catalog", { catalogOverride: { error: "unavailable" } }],
 ]) {
-  test(`${label} blocks dry run and write without modifying target`, async t => {
-    const f = await fixture(t, options);
+  test(`${leaderboard}: ${label} blocks dry run and write without modifying target`, async t => {
+    const f = await fixture(t, { ...options, leaderboard });
     for (const args of [[], ["--write"]]) {
       const result = f.run(...args);
       assert.equal(result.status, 1, result.stdout);
@@ -76,22 +77,16 @@ for (const [label, options] of [
   });
 }
 
-test("chat does not add unmatched models or validate their inferred IDs", async t => {
-  const f = await fixture(t, { additions: ["unknown-max"] });
-  const result = f.run("--leaderboard", "chat", "--write");
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal(await readFile(f.target, "utf8"), f.source);
-});
-
-test("intentionally deprecated entries remain unchanged and do not block", async t => {
-  const f = await fixture(t, { existingSlug: "anthropic/retired", deprecated: true });
+test(`${leaderboard}: intentionally deprecated entries remain unchanged and do not block`, async t => {
+  const f = await fixture(t, { leaderboard, existingSlug: "anthropic/retired", deprecated: true });
   const result = f.run("--write");
   assert.equal(result.status, 0, result.stderr);
   assert.equal(await readFile(f.target, "utf8"), f.source);
 });
 
-test("zero input price is allowed when output price remains positive", async t => {
-  const f = await fixture(t, { pricing: { prompt: "0", completion: "0.000001" } });
+test(`${leaderboard}: zero input price is allowed when output price remains positive`, async t => {
+  const f = await fixture(t, { leaderboard, pricing: { prompt: "0", completion: "0.000001" } });
   const result = f.run("--write");
   assert.equal(result.status, 0, result.stderr);
 });
+}

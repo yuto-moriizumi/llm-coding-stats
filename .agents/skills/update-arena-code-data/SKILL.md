@@ -7,6 +7,8 @@ description: Fetch current Arena Code/WebDev or Text/Chat leaderboard data from 
 
 Fetch and update leaderboard scores with the bundled deterministic script. Do not copy scores manually from rendered page text.
 
+Code and Chat use the same update behavior: update existing scores, add newly ranked models after identity/price validation, and autonomously repair incorrect mappings. Only the Arena source and destination registry differ. The CLI defaults to Code; select Chat with `--leaderboard chat`. When both are requested, run the same workflow for each; never copy Code scores into Chat.
+
 ## Resolve visibility failures autonomously
 
 The app joins `openrouterSlug` with OpenRouter `/api/v1/models`, defaults missing prices to zero, and hides models when both prices are zero. Typecheck and lint cannot catch this. A syntactically plausible slug is not a verified mapping.
@@ -44,7 +46,7 @@ Escalate only after the catalog, candidate model pages, and relevant official so
    - unexpected aliases or multiple source names mapping to one target;
    - a large score movement that appears inconsistent with the current leaderboard.
    - any chart visibility finding, even on a previously registered model: enter the autonomous repair loop above, then retry rather than ending the task.
-4. In `code` mode, add every Arena model absent from the registry only after its provider, OpenRouter identity, and priced visibility are verified. In `chat` mode, update existing entries only: unmatched Text Arena models must not be added because Chat intentionally contains only models with reviewed OpenRouter mappings.
+4. In both `code` and `chat` modes, add every Arena model absent from the selected registry only after its provider, OpenRouter identity, and priced visibility are verified. For unmatched models, enter the same identity-research and repair workflow in either mode; do not skip Chat additions or relax validation for them.
 5. If Arena renamed an existing model, update `references/model-aliases.json`, then rerun the dry run. Map Arena's current `modelDisplayName` to the repository's existing `name`. Remove aliases once the registry uses Arena's current name. Do not use aliases to merge genuinely different model variants.
 6. Apply the update only after the dry run is credible:
 
@@ -69,7 +71,7 @@ Escalate only after the catalog, candidate model pages, and relevant official so
 - Keep dry run as the default. Use `--write` only when the user requested data changes.
 - Round Arena's floating rating to the nearest displayed integer.
 - Keep duplicate display names at their highest rating, matching the repository's prior extractor behavior.
-- Add every newly ranked Arena model in `code` mode. In `chat` mode, report unmatched names without adding them.
+- Add every newly ranked Arena model in either mode after validation. Preserve existing metadata and deprecated flags identically in Code and Chat.
 - Infer provider only from Arena's organization field. Namespace rules produce candidate slugs only; review identity and pass the catalog/price gate before writing.
 - Never infer `deprecated: true` for a new model.
 - Stop without writing if the target registry cannot be parsed or if the fetched page lacks credible leaderboard data.

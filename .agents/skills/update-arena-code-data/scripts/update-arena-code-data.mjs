@@ -240,11 +240,8 @@ async function main() {
   if (resolvedScores.size < MIN_CREDIBLE_ROWS) throw new Error(`Matched only ${resolvedScores.size} repository models; refusing to update`);
   const scoreUpdate = updateSource(registrySource, resolvedScores);
   const unmatchedArenaModels = [...arenaModels.values()].filter((model) => !matchedArenaNames.has(model.name));
-  // Code data remains exhaustive. Chat data is intentionally restricted to
-  // models with reviewed OpenRouter metadata already present in its registry.
-  const additions = options.leaderboard === "code"
-    ? unmatchedArenaModels.map((model) => ({ ...model, arenaScore: Math.round(model.rating) }))
-    : [];
+  // Both leaderboards add missing models under the same metadata/price gate.
+  const additions = unmatchedArenaModels.map((model) => ({ ...model, arenaScore: Math.round(model.rating) }));
   const { updated, added } = addModels(scoreUpdate.updated, additions, slugOverrides);
   const changes = scoreUpdate.changes;
   const { cutoff, votes } = metadata(page);
@@ -260,7 +257,7 @@ async function main() {
   for (const { name, oldScore, newScore } of changes) console.log(`  ${name}: ${oldScore} -> ${newScore}`);
   console.log(`New models: ${added.length}`);
   for (const { name, provider, arenaScore, openrouterSlug } of added) console.log(`  ${name}: provider=${provider}, arenaScore=${arenaScore}, openrouterSlug=${openrouterSlug}`);
-  console.log(`${options.leaderboard === "code" ? "Arena models to add" : "Unmatched Arena models (not added to chat registry)"} (${unmatchedArena.length}): ${unmatchedArena.join(", ") || "none"}`);
+  console.log(`Arena models to add (${unmatchedArena.length}): ${unmatchedArena.join(", ") || "none"}`);
   console.log(`Unmatched repository models (${unmatchedRegistry.length}): ${unmatchedRegistry.join(", ") || "none"}`);
   console.log(`OpenRouter source: ${options.openrouterJson ?? "https://openrouter.ai/api/v1/models (live)"}`);
   const catalog = await loadOpenRouterCatalog(options.openrouterJson);
