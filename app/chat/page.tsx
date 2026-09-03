@@ -16,7 +16,7 @@ export default function ChatPage() {
       description="Text and chat performance vs cost comparison across major LLM providers"
       sourceLabel="Text Arena Overall"
       sourceUrl="https://arena.ai/leaderboard/text"
-      snapshotDate="2026-08-27"
+      snapshotDate="2026-09-02"
     />
   );
 }

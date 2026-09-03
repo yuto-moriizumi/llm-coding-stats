@@ -10,7 +10,7 @@ export interface LLMModel {
   outputPrice: number;
   /** Throughput (tokens per second) - optional, not always available */
   throughput?: number;
-  /** Whether the model has been deprecated by the provider */
+  /** Historical entry hidden by default: retired or unavailable through OpenRouter. */
   deprecated?: boolean;
 }
 

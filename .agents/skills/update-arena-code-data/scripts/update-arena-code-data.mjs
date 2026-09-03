@@ -34,13 +34,14 @@ Options:
   --aliases <path>    JSON alias map
   --openrouter-json <path>  Saved OpenRouter /api/v1/models response (offline)
   --slug-overrides <path>  Reviewed Arena-name-to-OpenRouter-ID JSON map
+  --deprecated-models <path>  Explicitly authorized deprecated additions (JSON name array)
   --write             Apply changes; otherwise perform a dry run
   --help              Show this help`;
 }
 
 function parseArgs(argv) {
   const options = { repo: process.cwd(), leaderboard: "code", url: undefined, html: undefined, target: undefined, aliases: resolve(SKILL_DIR, "references/model-aliases.json"), slugOverrides: resolve(SKILL_DIR, "references/openrouter-slugs.json"), write: false };
-  const valueOptions = new Map([["--repo", "repo"], ["--leaderboard", "leaderboard"], ["--url", "url"], ["--html", "html"], ["--target", "target"], ["--aliases", "aliases"], ["--openrouter-json", "openrouterJson"], ["--slug-overrides", "slugOverrides"]]);
+  const valueOptions = new Map([["--repo", "repo"], ["--leaderboard", "leaderboard"], ["--url", "url"], ["--html", "html"], ["--target", "target"], ["--aliases", "aliases"], ["--openrouter-json", "openrouterJson"], ["--slug-overrides", "slugOverrides"], ["--deprecated-models", "deprecatedModels"]]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--help") { console.log(usage()); process.exit(0); }
@@ -85,22 +86,37 @@ const ORGANIZATION_METADATA = new Map([
   ["Anthropic", { provider: "anthropic", slugPrefix: "anthropic" }],
   ["Arcee AI", { provider: "arcee", slugPrefix: "arcee-ai" }],
   ["ByteDance", { provider: "bytedance", slugPrefix: "bytedance" }],
+  ["Bytedance", { provider: "bytedance", slugPrefix: "bytedance-seed" }],
   ["Cohere", { provider: "cohere", slugPrefix: "cohere" }],
   ["DeepSeek", { provider: "deepseek", slugPrefix: "deepseek" }],
   ["Google", { provider: "google", slugPrefix: "google" }],
   ["IBM", { provider: "ibm", slugPrefix: "ibm-granite" }],
   ["Inception", { provider: "inception", slugPrefix: "inception" }],
+  ["Inception AI", { provider: "inception", slugPrefix: "inception" }],
   ["Kuaishou", { provider: "kwai", slugPrefix: "kwai" }],
   ["Meta", { provider: "meta", slugPrefix: "meta-llama" }],
   ["MiniMax", { provider: "minimax", slugPrefix: "minimax" }],
   ["Mistral", { provider: "mistral", slugPrefix: "mistralai" }],
   ["Moonshot AI", { provider: "moonshot", slugPrefix: "moonshotai" }],
+  ["Moonshot", { provider: "moonshot", slugPrefix: "moonshotai" }],
   ["OpenAI", { provider: "openai", slugPrefix: "openai" }],
   ["Poolside", { provider: "poolside", slugPrefix: "poolside" }],
   ["Tencent", { provider: "tencent", slugPrefix: "tencent" }],
   ["xAI", { provider: "xai", slugPrefix: "x-ai" }],
+  ["SpaceXAI", { provider: "xai", slugPrefix: "x-ai" }],
   ["Xiaomi", { provider: "xiaomi", slugPrefix: "xiaomi" }],
   ["Zhipu AI", { provider: "zhipu", slugPrefix: "z-ai" }],
+  ["Z.ai", { provider: "zhipu", slugPrefix: "z-ai" }],
+  ["Amazon", { provider: "other", slugPrefix: "amazon" }],
+  ["Baidu", { provider: "other", slugPrefix: "baidu" }],
+  ["Nvidia", { provider: "other", slugPrefix: "nvidia" }],
+  ["Microsoft", { provider: "other", slugPrefix: "microsoft" }],
+  ["Ai2", { provider: "other", slugPrefix: "allenai" }],
+  ["StepFun", { provider: "other", slugPrefix: "stepfun" }],
+  ["Upstage", { provider: "other", slugPrefix: "upstage" }],
+  ["Meituan", { provider: "other", slugPrefix: "meituan" }],
+  ["Ant Group", { provider: "other", slugPrefix: "inclusionai" }],
+  ["Thinky", { provider: "other", slugPrefix: "thinkingmachines" }],
 ]);
 
 function inferredMetadata(model, slugOverrides) {
@@ -138,20 +154,40 @@ function updateSource(source, scores) {
   return { updated, changes };
 }
 
-function addModels(source, additions, slugOverrides) {
+function addModels(source, additions, slugOverrides, deprecatedModels) {
   let updated = source;
   const added = [];
   for (const model of [...additions].sort((left, right) => right.arenaScore - left.arenaScore)) {
     const { provider, openrouterSlug } = inferredMetadata(model, slugOverrides);
-    const line = `  { name: ${JSON.stringify(model.name)}, provider: ${JSON.stringify(provider)}, arenaScore: ${model.arenaScore}, openrouterSlug: ${JSON.stringify(openrouterSlug)} },\n`;
+    const deprecated = deprecatedModels.has(model.name);
+    const line = `  { name: ${JSON.stringify(model.name)}, provider: ${JSON.stringify(provider)}, arenaScore: ${model.arenaScore},${deprecated ? " deprecated: true," : ""} openrouterSlug: ${JSON.stringify(openrouterSlug)} },\n`;
     const entries = [...updated.matchAll(MODEL_ENTRY)];
     const insertion = entries.find((entry) => Number(entry.groups.score) < model.arenaScore);
     const index = insertion ? updated.lastIndexOf("\n", insertion.index) + 1 : updated.lastIndexOf("];\n");
     if (index < 0) throw new Error("Could not locate the LLM_MODELS array terminator");
     updated = `${updated.slice(0, index)}${line}${updated.slice(index)}`;
-    added.push({ ...model, provider, openrouterSlug });
+    added.push({ ...model, provider, openrouterSlug, deprecated });
   }
   return { updated, added };
+}
+
+// Reorder whole entry lines so score changes cannot leave the registry unsorted.
+// Stable sorting preserves the previous order when scores tie.
+function sortModels(source) {
+  const lines = source.split("\n");
+  const entryLines = lines.filter((line) => [...line.matchAll(MODEL_ENTRY)].length);
+  entryLines.sort((left, right) => Number([...right.matchAll(MODEL_ENTRY)][0].groups.score) - Number([...left.matchAll(MODEL_ENTRY)][0].groups.score));
+  let index = 0;
+  return lines.map((line) => [...line.matchAll(MODEL_ENTRY)].length ? entryLines[index++] : line).join("\n");
+}
+
+async function loadDeprecatedModels(path) {
+  if (!path) return new Set();
+  const names = JSON.parse(await readFile(resolve(path), "utf8"));
+  if (!Array.isArray(names) || names.some((name) => typeof name !== "string" || !name) || new Set(names).size !== names.length) {
+    throw new Error("Deprecated models must be a JSON array of unique nonempty model names");
+  }
+  return new Set(names);
 }
 
 function metadata(source) {
@@ -225,6 +261,7 @@ async function main() {
   const arenaModels = parseLeaderboard(page);
   const aliases = await loadAliases(resolve(options.aliases));
   const slugOverrides = await loadAliases(resolve(options.slugOverrides));
+  const deprecatedModels = await loadDeprecatedModels(options.deprecatedModels);
   const registrySource = await readFile(target, "utf8");
   const registry = parseRegistry(registrySource);
   const resolvedScores = new Map();
@@ -242,9 +279,12 @@ async function main() {
   const unmatchedArenaModels = [...arenaModels.values()].filter((model) => !matchedArenaNames.has(model.name));
   // Both leaderboards add missing models under the same metadata/price gate.
   const additions = unmatchedArenaModels.map((model) => ({ ...model, arenaScore: Math.round(model.rating) }));
-  const { updated, added } = addModels(scoreUpdate.updated, additions, slugOverrides);
-  const changes = scoreUpdate.changes;
+  const modelUpdate = addModels(scoreUpdate.updated, additions, slugOverrides, deprecatedModels);
   const { cutoff, votes } = metadata(page);
+  let updated = sortModels(modelUpdate.updated);
+  if (cutoff) updated = updated.replace(/(Text Arena Overall snapshot: )\d{4}-\d{2}-\d{2}/, `$1${cutoff.slice(0, 10)}`);
+  const { added } = modelUpdate;
+  const changes = scoreUpdate.changes;
   const unmatchedArena = [...arenaModels.keys()].filter((name) => !matchedArenaNames.has(name)).sort();
   const unmatchedRegistry = [...registry.keys()].filter((name) => !resolvedScores.has(name)).sort();
   console.log(`Leaderboard: ${options.leaderboard}`);
@@ -256,7 +296,7 @@ async function main() {
   console.log(`Changed scores: ${changes.length}`);
   for (const { name, oldScore, newScore } of changes) console.log(`  ${name}: ${oldScore} -> ${newScore}`);
   console.log(`New models: ${added.length}`);
-  for (const { name, provider, arenaScore, openrouterSlug } of added) console.log(`  ${name}: provider=${provider}, arenaScore=${arenaScore}, openrouterSlug=${openrouterSlug}`);
+  for (const { name, provider, arenaScore, openrouterSlug, deprecated } of added) console.log(`  ${name}: provider=${provider}, arenaScore=${arenaScore}, openrouterSlug=${openrouterSlug}${deprecated ? ", deprecated=true (explicit list)" : ""}`);
   console.log(`Arena models to add (${unmatchedArena.length}): ${unmatchedArena.join(", ") || "none"}`);
   console.log(`Unmatched repository models (${unmatchedRegistry.length}): ${unmatchedRegistry.join(", ") || "none"}`);
   console.log(`OpenRouter source: ${options.openrouterJson ?? "https://openrouter.ai/api/v1/models (live)"}`);

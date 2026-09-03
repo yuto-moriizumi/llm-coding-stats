@@ -10,7 +10,7 @@ export default async function Home() {
       description="Coding performance vs cost comparison across major LLM providers"
       sourceLabel="Code Arena"
       sourceUrl="https://arena.ai/leaderboard/code"
-      snapshotDate="2026-08-31"
+      snapshotDate="2026-09-02"
     />
   );
 }

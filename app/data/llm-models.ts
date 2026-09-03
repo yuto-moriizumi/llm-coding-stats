@@ -35,7 +35,7 @@ export const LLM_MODELS: LLMModelDefinition[] = [
   { name: "claude-opus-4-6", provider: "anthropic", arenaScore: 1536, openrouterSlug: "anthropic/claude-opus-4.6" },
   { name: "muse-spark-1.2 (xHigh)", provider: "meta", arenaScore: 1534, openrouterSlug: "meta/muse-spark-1.2" },
   { name: "gemini-3.6-flash", provider: "google", arenaScore: 1533, openrouterSlug: "google/gemini-3.6-flash" },
-  { name: "claude-sonnet-4-6", provider: "anthropic", arenaScore: 1522, openrouterSlug: "anthropic/claude-sonnet-4" },
+  { name: "claude-sonnet-4-6", provider: "anthropic", arenaScore: 1522, openrouterSlug: "anthropic/claude-sonnet-4.6" },
   { name: "seed-2.1-pro-preview", provider: "bytedance", arenaScore: 1522, deprecated: true, openrouterSlug: "bytedance/seed-2.1-pro-preview" },
   { name: "gpt-5.6-terra-xhigh (codex-harness)", provider: "openai", arenaScore: 1519, openrouterSlug: "openai/gpt-5.6-terra" },
   { name: "gpt-5.6-luna-xhigh (codex-harness)", provider: "openai", arenaScore: 1519, openrouterSlug: "openai/gpt-5.6-luna" },

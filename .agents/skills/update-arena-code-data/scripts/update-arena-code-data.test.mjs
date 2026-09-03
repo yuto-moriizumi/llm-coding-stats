@@ -36,7 +36,7 @@ async function fixture(t, { leaderboard = "code", additions = [], existingSlug, 
     writeFile(json, JSON.stringify(catalogOverride ?? catalog)),
   ]);
   return {
-    source, target,
+    source, target, dir, html,
     run: (...args) => spawnSync(process.execPath, [script, "--leaderboard", leaderboard, "--target", target, "--html", html, "--openrouter-json", json, ...args], { encoding: "utf8" }),
   };
 }
@@ -88,5 +88,36 @@ test(`${leaderboard}: zero input price is allowed when output price remains posi
   const f = await fixture(t, { leaderboard, pricing: { prompt: "0", completion: "0.000001" } });
   const result = f.run("--write");
   assert.equal(result.status, 0, result.stderr);
+});
+
+test(`${leaderboard}: only explicitly listed new models may be added as deprecated`, async t => {
+  const f = await fixture(t, { leaderboard, additions: ["retired-model"] });
+  const list = join(f.dir, "deprecated.json");
+  await writeFile(list, JSON.stringify(["retired-model", "model-0"]));
+  assert.equal(f.run().status, 1);
+  const result = f.run("--deprecated-models", list, "--write");
+  assert.equal(result.status, 0, result.stderr);
+  const updated = await readFile(f.target, "utf8");
+  assert.match(updated, /name: "retired-model"[^\n]*deprecated: true/);
+  assert.doesNotMatch(updated, /name: "model-0"[^\n]*deprecated: true/);
+});
+
+test(`${leaderboard}: a deprecation list cannot bypass validation for existing models`, async t => {
+  const f = await fixture(t, { leaderboard, existingSlug: "anthropic/missing" });
+  const list = join(f.dir, "deprecated.json");
+  await writeFile(list, JSON.stringify(["model-0"]));
+  const result = f.run("--deprecated-models", list, "--write");
+  assert.equal(result.status, 1);
+  assert.equal(await readFile(f.target, "utf8"), f.source);
+});
+
+test(`${leaderboard}: score updates reorder whole entries and preserve metadata`, async t => {
+  const f = await fixture(t, { leaderboard });
+  const html = await readFile(f.html, "utf8");
+  await writeFile(f.html, html.replace('\\"rating\\":1481', '\\"rating\\":1600'));
+  const result = f.run("--write");
+  assert.equal(result.status, 0, result.stderr);
+  const updated = await readFile(f.target, "utf8");
+  assert.match(updated.split("\n")[1], /name: "model-19"[^\n]*arenaScore: 1600[^\n]*openrouterSlug: "anthropic\/model-19"/);
 });
 }
