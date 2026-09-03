@@ -1,4 +1,4 @@
 interface:
   display_name: "Arena Leaderboard Data Updater"
   short_description: "Arena Code・Chatランキングのモデルスコアを更新"
-  default_prompt: "Use $update-arena-code-data to sync the latest Arena Code or Chat leaderboard scores into this repository."
+  default_prompt: "Use $update-arena-code-data to sync both Arena Code and Chat leaderboard scores into this repository unless I explicitly select only one."

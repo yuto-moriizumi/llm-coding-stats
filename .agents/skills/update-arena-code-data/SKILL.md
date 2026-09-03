@@ -1,13 +1,15 @@
 ---
 name: update-arena-code-data
-description: Fetch current Arena Code/WebDev or Text/Chat leaderboard data from arena.ai and update the corresponding llm-coding-stats TypeScript model registry. Use when asked to refresh, sync, compare, or validate Code scores in app/data/llm-models.ts or Chat scores in app/data/chat-models.ts.
+description: Fetch current Arena Code/WebDev and Text/Chat leaderboard data from arena.ai and update both llm-coding-stats registries by default. Use when asked to refresh, sync, compare, or validate Arena scores; limit to one registry only when the user specifies Code or Chat.
 ---
 
 # Update Arena Code and Chat Data
 
 Fetch and update leaderboard scores with the bundled deterministic script. Do not copy scores manually from rendered page text.
 
-Code and Chat use the same update behavior: update existing scores, add newly ranked models after identity/price validation, and autonomously repair incorrect mappings. Only the Arena source and destination registry differ. The CLI defaults to Code; select Chat with `--leaderboard chat`. When both are requested, run the same workflow for each; never copy Code scores into Chat.
+Code and Chat use the same update behavior: update existing scores, add newly ranked models after identity/price validation, and autonomously repair incorrect mappings. Only the Arena source and destination registry differ.
+
+An invocation without a leaderboard selection (including `$update-arena-code-data` alone) targets **both Code and Chat**. Limit the workflow to one leaderboard only when the user explicitly selects it by name, source URL, or registry path. Run the workflow separately for each selected leaderboard, always passing `--leaderboard code` or `--leaderboard chat`. The helper's legacy no-flag Code default is not the skill's default scope. Never copy Code scores into Chat or report overall completion when only one of the two selected leaderboards has been checked.
 
 ## Resolve visibility failures autonomously
 
@@ -29,13 +31,13 @@ Escalate only after the catalog, candidate model pages, and relevant official so
 
 ## Workflow
 
-1. Locate the repository root and select the requested leaderboard:
+1. Locate the repository root and select both leaderboards unless the user explicitly limits the request:
    - `code` reads `/leaderboard/code` and targets `app/data/llm-models.ts`.
    - `chat` reads `/leaderboard/text` Overall scores and targets `app/data/chat-models.ts`.
 2. Confirm the target registry contains entries with `name` and `arenaScore`, then run a dry run first:
 
    ```bash
-   node <skill-dir>/scripts/update-arena-code-data.mjs --repo <repo-root>
+   node <skill-dir>/scripts/update-arena-code-data.mjs --repo <repo-root> --leaderboard code
    node <skill-dir>/scripts/update-arena-code-data.mjs --repo <repo-root> --leaderboard chat
    ```
 
@@ -51,7 +53,7 @@ Escalate only after the catalog, candidate model pages, and relevant official so
 6. Apply the update only after the dry run is credible:
 
    ```bash
-   node <skill-dir>/scripts/update-arena-code-data.mjs --repo <repo-root> --write
+   node <skill-dir>/scripts/update-arena-code-data.mjs --repo <repo-root> --leaderboard code --write
    node <skill-dir>/scripts/update-arena-code-data.mjs --repo <repo-root> --leaderboard chat --write
    ```
 
@@ -63,7 +65,7 @@ Escalate only after the catalog, candidate model pages, and relevant official so
    npm run lint
    ```
 
-9. Report the leaderboard date/vote cutoff when available, parsed row count, matched count, changed count, added models and verified mappings, unmatched repository models, chart visibility counts/blockers, and verification results. Distinguish catalog validation from actual browser verification.
+9. For each selected leaderboard, report the date/vote cutoff when available, parsed row count, matched count, changed count, added models and verified mappings, unmatched repository models, chart visibility counts/blockers, and verification results. If either leaderboard remains unresolved, report partial completion and its exact outstanding findings. Distinguish catalog validation from actual browser verification.
 
 ## Safety rules
 
