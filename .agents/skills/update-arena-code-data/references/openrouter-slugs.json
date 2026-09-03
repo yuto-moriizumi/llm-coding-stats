@@ -1,4 +1,24 @@
 {
   "claude-fable-5.1-max": "anthropic/claude-fable-5.1",
-  "qwen3.8-max-0902": "qwen/qwen3.8-max"
+  "qwen3.8-max-0902": "qwen/qwen3.8-max",
+  "grok-4.6-high": "x-ai/grok-4.6",
+  "qwen3.8-flash-next": "qwen/qwen3.8-flash",
+  "glm-5.3-max": "z-ai/glm-5.3",
+  "deepseek-v4-pro-high-20260813": "deepseek/deepseek-v4-pro-0813",
+  "claude-opus-4-8-high": "anthropic/claude-opus-4.8",
+  "claude-opus-4-7-high": "anthropic/claude-opus-4.7",
+  "claude-opus-4-6-high": "anthropic/claude-opus-4.6",
+  "muse-spark-1.2 (xHigh)": "meta/muse-spark-1.2",
+  "claude-opus-4-5-20251101-high-32k": "anthropic/claude-opus-4.5",
+  "kimi-k2.7-code": "moonshotai/kimi-k2.7-code",
+  "inkling": "thinkingmachines/inkling",
+  "Inkling Small": "thinkingmachines/inkling-small",
+  "claude-sonnet-4-5-20250929-high-32k": "anthropic/claude-sonnet-4.5",
+  "solar-pro4": "upstage/solar-pro4",
+  "muse-glimmer": "meta/muse-glimmer-30b",
+  "hunyuan-hy3-preview": "tencent/hy3-preview",
+  "claude-haiku-4-5-20251001": "anthropic/claude-haiku-4.5",
+  "qwen3-coder-480b-a35b-instruct": "qwen/qwen3-coder",
+  "qwen3.5-flash": "qwen/qwen3.5-flash-02-23",
+  "devstral-2": "mistralai/devstral-2512"
 }
