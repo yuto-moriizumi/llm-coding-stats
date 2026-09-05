@@ -265,7 +265,7 @@ export const CHAT_MODELS: LLMModelDefinition[] = [
   { name: "mercury", provider: "inception", arenaScore: 1308, deprecated: true, openrouterSlug: "inception/mercury" },
   { name: "deepseek-v2.5", provider: "deepseek", arenaScore: 1307, deprecated: true, openrouterSlug: "deepseek/deepseek-v2.5" },
   { name: "olmo-3-32b-think", provider: "other", arenaScore: 1307, deprecated: true, openrouterSlug: "allenai/olmo-3-32b-think" },
-  { name: "granite-4.1-8b", provider: "ibm", arenaScore: 1306, openrouterSlug: "ibm-granite/granite-4.1-8b" },
+  { name: "granite-4.1-8b", provider: "ibm", arenaScore: 1306, deprecated: true, openrouterSlug: "ibm-granite/granite-4.1-8b" },
   { name: "athene-70b-0725", provider: "other", arenaScore: 1306, deprecated: true, openrouterSlug: "other/athene-70b-0725" },
   { name: "mistral-large-2411", provider: "mistral", arenaScore: 1305, deprecated: true, openrouterSlug: "mistralai/mistral-large-2411" },
   { name: "magistral-medium-2506", provider: "mistral", arenaScore: 1304, deprecated: true, openrouterSlug: "mistralai/magistral-medium-2506" },
