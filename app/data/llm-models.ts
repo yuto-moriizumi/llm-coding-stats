@@ -119,7 +119,7 @@ export const LLM_MODELS: LLMModelDefinition[] = [
   { name: "grok-4-1-fast-reasoning", provider: "xai", arenaScore: 1240, deprecated: true, openrouterSlug: "x-ai/grok-4.1-fast" },
   { name: "qwen3.5-flash", provider: "alibaba", arenaScore: 1238, openrouterSlug: "qwen/qwen3.5-flash-02-23" },
   { name: "trinity-large-thinking", provider: "arcee", arenaScore: 1237, openrouterSlug: "arcee-ai/trinity-large-thinking" },
-  { name: "mistral-large-3", provider: "mistral", arenaScore: 1230, openrouterSlug: "mistralai/mistral-large-2512" },
+  { name: "mistral-large-3", provider: "mistral", arenaScore: 1230, deprecated: true, openrouterSlug: "mistralai/mistral-large-2512" },
   { name: "gemini-2.5-pro", provider: "google", arenaScore: 1226, openrouterSlug: "google/gemini-2.5-pro" },
   { name: "grok-4.1-thinking", provider: "xai", arenaScore: 1211, deprecated: true, openrouterSlug: "x-ai/grok-4.1" },
   { name: "devstral-2", provider: "mistral", arenaScore: 1194, openrouterSlug: "mistralai/devstral-2512" },

@@ -25,7 +25,7 @@ async function fixture(t, { leaderboard = "code", additions = [], existingSlug, 
   })) };
   catalog.data.push(
     { id: "anthropic/claude-fable-5.1", pricing: { prompt: "0.00001", completion: "0.00005" } },
-    { id: "qwen/qwen3.8-max", pricing: { prompt: "0.000002", completion: "0.000006" } },
+    { id: "qwen/qwen3.8-max-0902", pricing: { prompt: "0.000002", completion: "0.000006" } },
   );
   const target = join(dir, "models.ts");
   const html = join(dir, "arena.html");
@@ -51,7 +51,7 @@ test(`${leaderboard}: reviewed Fable/Qwen IDs are used; dry run preserves bytes;
   assert.equal(result.status, 0, result.stderr);
   const updated = await readFile(f.target, "utf8");
   assert.match(updated, /name: "claude-fable-5.1-max"[^\n]*openrouterSlug: "anthropic\/claude-fable-5.1"/);
-  assert.match(updated, /name: "qwen3.8-max-0902"[^\n]*openrouterSlug: "qwen\/qwen3.8-max"/);
+  assert.match(updated, /name: "qwen3.8-max-0902"[^\n]*openrouterSlug: "qwen\/qwen3.8-max-0902"/);
   assert.equal(updated.split("\n").filter(line => !newNames.some(name => line.includes(`name: "${name}"`))).join("\n"), f.source);
 });
 
