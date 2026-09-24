@@ -1,4 +1,7 @@
 {
+  "claude-opus-5.5-max": "anthropic/claude-opus-5.5",
+  "gpt-6-sol-max": "openai/gpt-6-sol",
+  "grok-4.7-xhigh": "x-ai/grok-4.7",
   "claude-fable-5.1-max": "anthropic/claude-fable-5.1",
   "gpt-6-astra-max": "openai/gpt-6-astra",
   "qwen3.8-max-0902": "qwen/qwen3.8-max-0902",
