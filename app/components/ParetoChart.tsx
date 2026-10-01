@@ -629,7 +629,9 @@ export default function ParetoChart({
 
   const toggleProvider = (provider: Provider) => {
     setSelectedProviders((prev) => {
-      const next = new Set(prev);
+      // An empty set means "all providers", so start from all providers when
+      // the user first clicks a chip. This keeps multi-select intuitive.
+      const next = new Set(prev.size === 0 ? providers : prev);
       if (next.has(provider)) {
         next.delete(provider);
       } else {
@@ -671,8 +673,7 @@ export default function ParetoChart({
       {/* Provider filter chips */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         {providers.map((provider) => {
-          const active =
-            selectedProviders.size === 0 || selectedProviders.has(provider);
+          const active = selectedProviders.size === 0 || selectedProviders.has(provider);
           return (
             <button
               key={provider}
@@ -698,12 +699,12 @@ export default function ParetoChart({
             </button>
           );
         })}
-        {selectedProviders.size > 0 && (
+        {selectedProviders.size !== providers.length && (
           <button
             onClick={() => setSelectedProviders(new Set())}
             className="rounded-md border border-white/10 px-2 py-1 text-sm text-gray-400 transition-colors hover:text-gray-200"
           >
-            Clear
+            Show all
           </button>
         )}
       </div>
