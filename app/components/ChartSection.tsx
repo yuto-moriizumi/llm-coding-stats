@@ -14,7 +14,6 @@ interface ChartSectionProps {
 export default function ChartSection({ models, endpointMap }: ChartSectionProps) {
   const [selectedModel, setSelectedModel] = useState<LLMModel | null>(null);
   const [priceRatio, setPriceRatio] = useState<number>(3);
-
   const handleSelectModel = useCallback((model: LLMModel) => {
     setSelectedModel((prev) =>
       prev?.name === model.name ? null : model,
