@@ -2,6 +2,8 @@
   "claude-opus-5.5-max": "anthropic/claude-opus-5.5",
   "claude-opus-5.5-high": "anthropic/claude-opus-5.5",
   "gpt-6-sol-max": "openai/gpt-6-sol",
+  "gpt-6.1-sol-max": "openai/gpt-6.1-sol",
+  "claude-sonnet-5.5-high": "anthropic/claude-sonnet-5.5",
   "gpt-6-luna-max": "openai/gpt-6-luna",
   "grok-4.7-xhigh": "x-ai/grok-4.7",
   "claude-fable-5.1-max": "anthropic/claude-fable-5.1",

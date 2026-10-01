@@ -17,7 +17,7 @@ import type { EndpointData } from "../lib/openrouter";
 interface ThroughputPriceChartProps {
   endpoints: EndpointData[] | null;
   modelName: string | null;
-  openrouterSlug: string;
+  openrouterSlug?: string;
   priceRatio?: number;
 }
 
@@ -259,13 +259,17 @@ export default function ThroughputPriceChart({
       {/* Model name header */}
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-medium text-gray-200">
-          <a
-            href={`https://openrouter.ai/${openrouterSlug}`}
-            className="text-blue-400 underline decoration-blue-400/50 underline-offset-2 hover:text-blue-300"
-            aria-label={`View ${modelName} on OpenRouter`}
-          >
-            {modelName}
-          </a>
+          {openrouterSlug ? (
+            <a
+              href={`https://openrouter.ai/${openrouterSlug}`}
+              className="text-blue-400 underline decoration-blue-400/50 underline-offset-2 hover:text-blue-300"
+              aria-label={`View ${modelName} on OpenRouter`}
+            >
+              {modelName}
+            </a>
+          ) : (
+            <span>{modelName}</span>
+          )}
           <span className="ml-2 text-xs font-normal text-gray-500">
             — Provider-level throughput vs. effective price
           </span>

@@ -57,7 +57,12 @@ export interface EndpointData {
  */
 function modelSlugEntries(models: readonly LLMModelDefinition[]) {
   return models
-    .filter((model) => !model.deprecated)
+    .filter(
+      (model): model is LLMModelDefinition & { openrouterSlug: string } =>
+        !model.deprecated &&
+        model.openrouterStatus !== "pending" &&
+        typeof model.openrouterSlug === "string",
+    )
     .map((model) => [model.name, model.openrouterSlug] as const);
 }
 

@@ -1,8 +1,6 @@
-export interface LLMModel {
+interface LLMModelFields {
   name: string;
   provider: Provider;
-  /** OpenRouter model identifier (provider/model). */
-  openrouterSlug: string;
   arenaScore: number;
   /** Input price per 1M tokens (USD) */
   inputPrice: number;
@@ -10,12 +8,19 @@ export interface LLMModel {
   outputPrice: number;
   /** Throughput (tokens per second) - optional, not always available */
   throughput?: number;
-  /** Historical entry hidden by default: retired or unavailable through OpenRouter. */
+  /** Historical/retired entry hidden by default; unrelated to OpenRouter listing status. */
   deprecated?: boolean;
 }
 
+type OpenRouterListing =
+  | { openrouterSlug: string; openrouterStatus?: never }
+  | { openrouterSlug?: never; openrouterStatus: "pending" };
+
+export type LLMModel = LLMModelFields & OpenRouterListing;
+
 /** Static model metadata; pricing is populated from OpenRouter at runtime. */
-export type LLMModelDefinition = Omit<LLMModel, "inputPrice" | "outputPrice">;
+export type LLMModelDefinition =
+  Omit<LLMModelFields, "inputPrice" | "outputPrice"> & OpenRouterListing;
 
 export type Provider =
   | "anthropic"

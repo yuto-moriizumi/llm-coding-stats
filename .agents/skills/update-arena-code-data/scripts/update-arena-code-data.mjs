@@ -34,14 +34,15 @@ Options:
   --aliases <path>    JSON alias map
   --openrouter-json <path>  Saved OpenRouter /api/v1/models response (offline)
   --slug-overrides <path>  Reviewed Arena-name-to-OpenRouter-ID JSON map
+  --openrouter-pending <path>  Reviewed Arena names awaiting an OpenRouter listing
   --deprecated-models <path>  Explicitly authorized deprecated additions (JSON name array)
   --write             Apply changes; otherwise perform a dry run
   --help              Show this help`;
 }
 
 function parseArgs(argv) {
-  const options = { repo: process.cwd(), leaderboard: "code", url: undefined, html: undefined, target: undefined, aliases: resolve(SKILL_DIR, "references/model-aliases.json"), slugOverrides: resolve(SKILL_DIR, "references/openrouter-slugs.json"), write: false };
-  const valueOptions = new Map([["--repo", "repo"], ["--leaderboard", "leaderboard"], ["--url", "url"], ["--html", "html"], ["--target", "target"], ["--aliases", "aliases"], ["--openrouter-json", "openrouterJson"], ["--slug-overrides", "slugOverrides"], ["--deprecated-models", "deprecatedModels"]]);
+  const options = { repo: process.cwd(), leaderboard: "code", url: undefined, html: undefined, target: undefined, aliases: resolve(SKILL_DIR, "references/model-aliases.json"), slugOverrides: resolve(SKILL_DIR, "references/openrouter-slugs.json"), openrouterPending: resolve(SKILL_DIR, "references/openrouter-pending.json"), write: false };
+  const valueOptions = new Map([["--repo", "repo"], ["--leaderboard", "leaderboard"], ["--url", "url"], ["--html", "html"], ["--target", "target"], ["--aliases", "aliases"], ["--openrouter-json", "openrouterJson"], ["--slug-overrides", "slugOverrides"], ["--openrouter-pending", "openrouterPending"], ["--deprecated-models", "deprecatedModels"]]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--help") { console.log(usage()); process.exit(0); }
@@ -154,19 +155,23 @@ function updateSource(source, scores) {
   return { updated, changes };
 }
 
-function addModels(source, additions, slugOverrides, deprecatedModels) {
+function addModels(source, additions, slugOverrides, pendingOpenRouterModels, deprecatedModels) {
   let updated = source;
   const added = [];
   for (const model of [...additions].sort((left, right) => right.arenaScore - left.arenaScore)) {
+    const pendingOpenRouter = pendingOpenRouterModels.has(model.name);
+    if (pendingOpenRouter && slugOverrides[model.name]) throw new Error(`${model.name} cannot be both OpenRouter-pending and have a reviewed slug override`);
     const { provider, openrouterSlug } = inferredMetadata(model, slugOverrides);
     const deprecated = deprecatedModels.has(model.name);
-    const line = `  { name: ${JSON.stringify(model.name)}, provider: ${JSON.stringify(provider)}, arenaScore: ${model.arenaScore},${deprecated ? " deprecated: true," : ""} openrouterSlug: ${JSON.stringify(openrouterSlug)} },\n`;
+    if (pendingOpenRouter && deprecated) throw new Error(`${model.name} cannot be both OpenRouter-pending and deprecated`);
+    const openrouterFields = pendingOpenRouter ? ' openrouterStatus: "pending"' : ` openrouterSlug: ${JSON.stringify(openrouterSlug)}`;
+    const line = `  { name: ${JSON.stringify(model.name)}, provider: ${JSON.stringify(provider)}, arenaScore: ${model.arenaScore},${deprecated ? " deprecated: true," : ""}${openrouterFields} },\n`;
     const entries = [...updated.matchAll(MODEL_ENTRY)];
     const insertion = entries.find((entry) => Number(entry.groups.score) < model.arenaScore);
     const index = insertion ? updated.lastIndexOf("\n", insertion.index) + 1 : updated.lastIndexOf("];\n");
     if (index < 0) throw new Error("Could not locate the LLM_MODELS array terminator");
     updated = `${updated.slice(0, index)}${line}${updated.slice(index)}`;
-    added.push({ ...model, provider, openrouterSlug, deprecated });
+    added.push({ ...model, provider, openrouterSlug: pendingOpenRouter ? undefined : openrouterSlug, openrouterStatus: pendingOpenRouter ? "pending" : undefined, deprecated });
   }
   return { updated, added };
 }
@@ -186,6 +191,14 @@ async function loadDeprecatedModels(path) {
   const names = JSON.parse(await readFile(resolve(path), "utf8"));
   if (!Array.isArray(names) || names.some((name) => typeof name !== "string" || !name) || new Set(names).size !== names.length) {
     throw new Error("Deprecated models must be a JSON array of unique nonempty model names");
+  }
+  return new Set(names);
+}
+
+async function loadPendingOpenRouterModels(path) {
+  const names = JSON.parse(await readFile(resolve(path), "utf8"));
+  if (!Array.isArray(names) || names.some((name) => typeof name !== "string" || !name) || new Set(names).size !== names.length) {
+    throw new Error("OpenRouter-pending models must be an array of unique nonempty Arena display names");
   }
   return new Set(names);
 }
@@ -225,12 +238,24 @@ function checkVisibility(source, catalog) {
   const blockers = [];
   let visible = 0;
   let deprecated = 0;
+  let pending = 0;
   for (const match of source.matchAll(MODEL_ENTRY)) {
     const name = decodeJsonString(match.groups.name);
+    const isDeprecated = /\bdeprecated:\s*true\b/.test(match[0]);
+    const isPending = /\bopenrouterStatus:\s*"pending"/.test(match[0]);
+    if (isDeprecated && isPending) {
+      blockers.push(`${name}: cannot be both deprecated and OpenRouter-pending`);
+      continue;
+    }
     // Deprecated entries are intentionally hidden by the default chart filter.
-    if (/\bdeprecated:\s*true\b/.test(match[0])) { deprecated += 1; continue; }
+    if (isDeprecated) { deprecated += 1; continue; }
     const slugMatch = match[0].match(/\bopenrouterSlug:\s*"((?:\\.|[^"\\])*)"/);
     const slug = slugMatch ? decodeJsonString(slugMatch[1]) : undefined;
+    if (isPending) {
+      if (slug) blockers.push(`${name} [${slug}]: pending OpenRouter models must not have a slug`);
+      else pending += 1;
+      continue;
+    }
     const model = catalog.get(slug);
     let reason;
     if (!model) {
@@ -247,7 +272,7 @@ function checkVisibility(source, catalog) {
     if (reason) blockers.push(`${name} [${slug ?? "no slug"}]: ${reason}`);
     else visible += 1;
   }
-  console.log(`Chart visibility: ${visible} priced, ${deprecated} intentionally deprecated, ${blockers.length} blocked`);
+  console.log(`Chart visibility: ${visible} priced, ${deprecated} intentionally deprecated, ${pending} OpenRouter-pending, ${blockers.length} blocked`);
   for (const blocker of blockers) console.log(`  BLOCKED: ${blocker}`);
   if (blockers.length) throw new Error("Chart visibility validation failed; this invocation wrote no registry. Agent: follow SKILL.md's autonomous repair loop: research exact identities in OpenRouter/provider sources, repair verified slug mappings, and rerun until resolved. Escalate only after exhausting relevant evidence; do not hide unresolved models or invent prices.");
 }
@@ -261,6 +286,10 @@ async function main() {
   const arenaModels = parseLeaderboard(page);
   const aliases = await loadAliases(resolve(options.aliases));
   const slugOverrides = await loadAliases(resolve(options.slugOverrides));
+  const pendingOpenRouterModels = await loadPendingOpenRouterModels(options.openrouterPending);
+  for (const name of pendingOpenRouterModels) {
+    if (slugOverrides[name]) throw new Error(`${name} cannot be both OpenRouter-pending and have a reviewed slug override`);
+  }
   const deprecatedModels = await loadDeprecatedModels(options.deprecatedModels);
   const registrySource = await readFile(target, "utf8");
   const registry = parseRegistry(registrySource);
@@ -279,7 +308,7 @@ async function main() {
   const unmatchedArenaModels = [...arenaModels.values()].filter((model) => !matchedArenaNames.has(model.name));
   // Both leaderboards add missing models under the same metadata/price gate.
   const additions = unmatchedArenaModels.map((model) => ({ ...model, arenaScore: Math.round(model.rating) }));
-  const modelUpdate = addModels(scoreUpdate.updated, additions, slugOverrides, deprecatedModels);
+  const modelUpdate = addModels(scoreUpdate.updated, additions, slugOverrides, pendingOpenRouterModels, deprecatedModels);
   const { cutoff, votes } = metadata(page);
   let updated = sortModels(modelUpdate.updated);
   if (cutoff) updated = updated.replace(/(Text Arena Overall snapshot: )\d{4}-\d{2}-\d{2}/, `$1${cutoff.slice(0, 10)}`);
@@ -296,7 +325,7 @@ async function main() {
   console.log(`Changed scores: ${changes.length}`);
   for (const { name, oldScore, newScore } of changes) console.log(`  ${name}: ${oldScore} -> ${newScore}`);
   console.log(`New models: ${added.length}`);
-  for (const { name, provider, arenaScore, openrouterSlug, deprecated } of added) console.log(`  ${name}: provider=${provider}, arenaScore=${arenaScore}, openrouterSlug=${openrouterSlug}${deprecated ? ", deprecated=true (explicit list)" : ""}`);
+  for (const { name, provider, arenaScore, openrouterSlug, openrouterStatus, deprecated } of added) console.log(`  ${name}: provider=${provider}, arenaScore=${arenaScore}, ${openrouterStatus ? `openrouterStatus=${openrouterStatus}` : `openrouterSlug=${openrouterSlug}`}${deprecated ? ", deprecated=true (explicit list)" : ""}`);
   console.log(`Arena models to add (${unmatchedArena.length}): ${unmatchedArena.join(", ") || "none"}`);
   console.log(`Unmatched repository models (${unmatchedRegistry.length}): ${unmatchedRegistry.join(", ") || "none"}`);
   console.log(`OpenRouter source: ${options.openrouterJson ?? "https://openrouter.ai/api/v1/models (live)"}`);
