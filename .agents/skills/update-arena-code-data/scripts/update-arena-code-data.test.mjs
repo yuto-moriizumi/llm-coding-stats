@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 const script = fileURLToPath(new URL("./update-arena-code-data.mjs", import.meta.url));
 const newNames = ["claude-fable-5.1-max", "qwen3.8-max-0902"];
 
-async function fixture(t, { leaderboard = "code", additions = [], existingSlug, pricing, catalogOverride, deprecated = false } = {}) {
+async function fixture(t, { leaderboard = "code", additions = [], existingSlug, pricing, catalogOverride, deprecated = false, displayNames = {}, extraCatalog = [] } = {}) {
   const dir = await mkdtemp(join(tmpdir(), "arena-visibility-test-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const models = Array.from({ length: 20 }, (_, i) => ({
@@ -17,7 +17,7 @@ async function fixture(t, { leaderboard = "code", additions = [], existingSlug, 
   }));
   const source = `export const LLM_MODELS = [\n${models.map((m, i) => `  { name: "${m.name}", provider: "anthropic", arenaScore: ${1500 - i}, openrouterSlug: "${m.slug}"${i === 0 && deprecated ? ", deprecated: true" : ""} },`).join("\n")}\n];\n`;
   const rows = [...models.map(m => m.name), ...additions].map((name, i) => ({
-    rank: i + 1, rankUpper: null, rankLower: null, modelKey: name, modelDisplayName: name,
+    rank: i + 1, rankUpper: null, rankLower: null, modelKey: name, modelDisplayName: displayNames[name] ?? name,
     rating: 1500 - i, modelOrganization: name.startsWith("qwen") ? "Alibaba" : "Anthropic",
   }));
   const catalog = { data: models.map((m, i) => ({
@@ -26,6 +26,7 @@ async function fixture(t, { leaderboard = "code", additions = [], existingSlug, 
   catalog.data.push(
     { id: "anthropic/claude-fable-5.1", pricing: { prompt: "0.00001", completion: "0.00005" } },
     { id: "qwen/qwen3.8-max-0902", pricing: { prompt: "0.000002", completion: "0.000006" } },
+    ...extraCatalog,
   );
   const target = join(dir, "models.ts");
   const html = join(dir, "arena.html");
@@ -119,5 +120,21 @@ test(`${leaderboard}: score updates reorder whole entries and preserve metadata`
   assert.equal(result.status, 0, result.stderr);
   const updated = await readFile(f.target, "utf8");
   assert.match(updated.split("\n")[1], /name: "model-19"[^\n]*arenaScore: 1600[^\n]*openrouterSlug: "anthropic\/model-19"/);
+});
+
+test(`${leaderboard}: friendly Arena display names match existing entries and slugify new additions`, async t => {
+  const f = await fixture(t, {
+    leaderboard,
+    additions: ["Fancy Model (Max)"],
+    displayNames: { "model-0": "0 Model", "model-3": "Model 3" },
+    extraCatalog: [{ id: "anthropic/fancy-model-max", pricing: { prompt: "0.000001", completion: "0.000002" } }],
+  });
+  const result = f.run("--write");
+  assert.equal(result.status, 0, result.stderr);
+  const updated = await readFile(f.target, "utf8");
+  // Matching all 20 existing entries proves the friendly names were resolved;
+  // the new addition keeps a slug-style repository name.
+  assert.match(updated, /name: "fancy-model-max"[^\n]*openrouterSlug: "anthropic\/fancy-model-max"/);
+  assert.doesNotMatch(updated, /name: "Fancy Model \(Max\)"/);
 });
 }
