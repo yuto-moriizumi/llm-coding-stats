@@ -33,7 +33,7 @@ Escalate only after the catalog, candidate model pages, and relevant official so
 ## Workflow
 
 1. Locate the repository root and select both leaderboards unless the user explicitly limits the request:
-   - `code` reads `/leaderboard/code` and targets `app/data/llm-models.ts`.
+   - `code` reads `/leaderboard/code/webdev` and targets `app/data/llm-models.ts`. The aggregate `/leaderboard/code` view currently renders an empty shell; WebDev carries the same model set (including the Codex-harness variants) and is the data source.
    - `chat` reads `/leaderboard/text` Overall scores and targets `app/data/chat-models.ts`.
 2. Confirm the target registry contains entries with `name` and `arenaScore`, then run a dry run first:
 
@@ -50,7 +50,7 @@ Escalate only after the catalog, candidate model pages, and relevant official so
    - a large score movement that appears inconsistent with the current leaderboard.
    - any chart visibility finding for a listed model: enter the autonomous repair loop above, then retry rather than ending the task.
 4. In both `code` and `chat` modes, add every Arena model absent from the selected registry after its provider and identity are verified. If it has no priced OpenRouter listing after the research in step 5 above, record it in `references/openrouter-pending.json`; do not skip it or invent a slug/price.
-5. If Arena renamed an existing model, update `references/model-aliases.json`, then rerun the dry run. Map Arena's current `modelDisplayName` to the repository's existing `name`. Remove aliases once the registry uses Arena's current name. Do not use aliases to merge genuinely different model variants.
+5. Arena now publishes human-friendly `modelDisplayName` values ("Claude Opus 4.6 (High)") while the registries keep slug-style names; the updater matches them by normalized comparison (punctuation, casing, dots and qualifier order). If an Arena rename still does not resolve, update `references/model-aliases.json`, then rerun the dry run. Map Arena's current `modelDisplayName` to the repository's existing `name`. Remove aliases once the registry uses Arena's current name. Do not use aliases to merge genuinely different model variants. New additions get a slug-style repository name derived from the display name.
 6. Apply the update only after the dry run is credible:
 
    ```bash

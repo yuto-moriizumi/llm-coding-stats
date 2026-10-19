@@ -7,7 +7,8 @@ import { randomUUID } from "node:crypto";
 
 const LEADERBOARDS = {
   code: {
-    url: "https://arena.ai/leaderboard/code",
+    // The aggregate /leaderboard/code view currently renders an empty shell; WebDev is its data source.
+    url: "https://arena.ai/leaderboard/code/webdev",
     target: "app/data/llm-models.ts",
   },
   chat: {
@@ -59,6 +60,33 @@ function parseArgs(argv) {
 }
 
 function decodeJsonString(value) { return JSON.parse(`"${value}"`); }
+
+// Arena publishes human-friendly display names now ("Claude Opus 4.6 (High)"),
+// while the registries keep stable slug-style names ("claude-opus-4-6-high").
+// Comparison keys ignore punctuation and casing; repository names keep version dots.
+function comparisonKey(value) {
+  return value.toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[()]/g, " ")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function tokenKey(value) {
+  return comparisonKey(value).split("-").filter(Boolean).sort().join("-");
+}
+
+function repositoryName(value) {
+  return value.toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[()]/g, " ")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 async function fetchHtml(url) {
   const controller = new AbortController();
@@ -120,11 +148,11 @@ const ORGANIZATION_METADATA = new Map([
   ["Thinky", { provider: "other", slugPrefix: "thinkingmachines" }],
 ]);
 
-function inferredMetadata(model, slugOverrides) {
+function inferredMetadata(model, slugOverrides, name) {
   const known = ORGANIZATION_METADATA.get(model.organization);
   const provider = known?.provider ?? "other";
   const slugPrefix = known?.slugPrefix ?? "other";
-  let slugName = model.name;
+  let slugName = name;
   if (provider === "google" && /^gemini-/.test(slugName)) slugName = slugName.replace(/-(?:high|medium|low)$/, "");
   return { provider, openrouterSlug: slugOverrides[model.name] ?? `${slugPrefix}/${slugName}` };
 }
@@ -155,23 +183,27 @@ function updateSource(source, scores) {
   return { updated, changes };
 }
 
-function addModels(source, additions, slugOverrides, pendingOpenRouterModels, deprecatedModels) {
+function addModels(source, additions, aliases, slugOverrides, pendingOpenRouterModels, deprecatedModels) {
   let updated = source;
   const added = [];
+  const addedNames = new Set();
   for (const model of [...additions].sort((left, right) => right.arenaScore - left.arenaScore)) {
+    const name = aliases[model.name] ?? repositoryName(model.name);
+    if (addedNames.has(name)) throw new Error(`Multiple Arena models resolve to new repository model ${JSON.stringify(name)}`);
+    addedNames.add(name);
     const pendingOpenRouter = pendingOpenRouterModels.has(model.name);
     if (pendingOpenRouter && slugOverrides[model.name]) throw new Error(`${model.name} cannot be both OpenRouter-pending and have a reviewed slug override`);
-    const { provider, openrouterSlug } = inferredMetadata(model, slugOverrides);
-    const deprecated = deprecatedModels.has(model.name);
+    const { provider, openrouterSlug } = inferredMetadata(model, slugOverrides, name);
+    const deprecated = deprecatedModels.has(name);
     if (pendingOpenRouter && deprecated) throw new Error(`${model.name} cannot be both OpenRouter-pending and deprecated`);
     const openrouterFields = pendingOpenRouter ? ' openrouterStatus: "pending"' : ` openrouterSlug: ${JSON.stringify(openrouterSlug)}`;
-    const line = `  { name: ${JSON.stringify(model.name)}, provider: ${JSON.stringify(provider)}, arenaScore: ${model.arenaScore},${deprecated ? " deprecated: true," : ""}${openrouterFields} },\n`;
+    const line = `  { name: ${JSON.stringify(name)}, provider: ${JSON.stringify(provider)}, arenaScore: ${model.arenaScore},${deprecated ? " deprecated: true," : ""}${openrouterFields} },\n`;
     const entries = [...updated.matchAll(MODEL_ENTRY)];
     const insertion = entries.find((entry) => Number(entry.groups.score) < model.arenaScore);
     const index = insertion ? updated.lastIndexOf("\n", insertion.index) + 1 : updated.lastIndexOf("];\n");
     if (index < 0) throw new Error("Could not locate the LLM_MODELS array terminator");
     updated = `${updated.slice(0, index)}${line}${updated.slice(index)}`;
-    added.push({ ...model, provider, openrouterSlug: pendingOpenRouter ? undefined : openrouterSlug, openrouterStatus: pendingOpenRouter ? "pending" : undefined, deprecated });
+    added.push({ ...model, name, provider, openrouterSlug: pendingOpenRouter ? undefined : openrouterSlug, openrouterStatus: pendingOpenRouter ? "pending" : undefined, deprecated });
   }
   return { updated, added };
 }
@@ -293,11 +325,29 @@ async function main() {
   const deprecatedModels = await loadDeprecatedModels(options.deprecatedModels);
   const registrySource = await readFile(target, "utf8");
   const registry = parseRegistry(registrySource);
+  const registryByComparison = new Map();
+  const registryByTokens = new Map();
+  for (const name of registry.keys()) {
+    for (const [map, key] of [[registryByComparison, comparisonKey(name)], [registryByTokens, tokenKey(name)]]) {
+      const matches = map.get(key) ?? [];
+      matches.push(name);
+      map.set(key, matches);
+    }
+  }
+  function resolveRegistryName(arenaName) {
+    const comparisonMatches = registryByComparison.get(comparisonKey(arenaName)) ?? [];
+    if (comparisonMatches.length === 1) return comparisonMatches[0];
+    if (comparisonMatches.length > 1) throw new Error(`Arena model ${JSON.stringify(arenaName)} matches multiple repository models: ${comparisonMatches.join(", ")}. Add an explicit alias.`);
+    const tokenMatches = registryByTokens.get(tokenKey(arenaName)) ?? [];
+    if (tokenMatches.length === 1) return tokenMatches[0];
+    if (tokenMatches.length > 1) throw new Error(`Arena model ${JSON.stringify(arenaName)} matches multiple repository models: ${tokenMatches.join(", ")}. Add an explicit alias.`);
+    return undefined;
+  }
   const resolvedScores = new Map();
   const matchedArenaNames = new Set();
   for (const [arenaName, model] of arenaModels) {
-    const targetName = aliases[arenaName] ?? arenaName;
-    if (registry.has(targetName)) {
+    const targetName = aliases[arenaName] ?? resolveRegistryName(arenaName);
+    if (targetName !== undefined && registry.has(targetName)) {
       if (resolvedScores.has(targetName)) throw new Error(`Multiple Arena models map to repository model ${JSON.stringify(targetName)}`);
       resolvedScores.set(targetName, Math.round(model.rating));
       matchedArenaNames.add(arenaName);
@@ -308,7 +358,7 @@ async function main() {
   const unmatchedArenaModels = [...arenaModels.values()].filter((model) => !matchedArenaNames.has(model.name));
   // Both leaderboards add missing models under the same metadata/price gate.
   const additions = unmatchedArenaModels.map((model) => ({ ...model, arenaScore: Math.round(model.rating) }));
-  const modelUpdate = addModels(scoreUpdate.updated, additions, slugOverrides, pendingOpenRouterModels, deprecatedModels);
+  const modelUpdate = addModels(scoreUpdate.updated, additions, aliases, slugOverrides, pendingOpenRouterModels, deprecatedModels);
   const { cutoff, votes } = metadata(page);
   let updated = sortModels(modelUpdate.updated);
   if (cutoff) updated = updated.replace(/(Text Arena Overall snapshot: )\d{4}-\d{2}-\d{2}/, `$1${cutoff.slice(0, 10)}`);
