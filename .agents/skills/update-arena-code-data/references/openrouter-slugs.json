@@ -1,4 +1,13 @@
 {
+  "Claude Fable 5.2 (xHigh)": "anthropic/claude-fable-5.2",
+  "Qwen4-Max (xHigh)": "qwen/qwen4-max",
+  "Kimi K3.1 Pro (Max)": "moonshotai/kimi-k3.1-pro",
+  "GPT-6.1 Terra (Max)": "openai/gpt-6.1-terra",
+  "Muse Ember (Max)": "meta/muse-ember",
+  "Muse Wonder Full (Max)": "meta/muse-wonder",
+  "NVIDIA-Nemotron-3.5-Super-VL-120B-A12B (NVFP4)": "nvidia/nemotron-3.5-super-vl",
+  "Inkling 2 Small": "thinkingmachines/inkling-2-small",
+  "Beam 1.0 501B A23B": "reflection/beam-1.0-501b-a23b",
   "Gemini 4 Argon (High)": "google/gemini-4-argon",
   "Step 5 Preview (High)": "stepfun/step-5-preview",
   "Step 5 Preview": "stepfun/step-5-preview",
