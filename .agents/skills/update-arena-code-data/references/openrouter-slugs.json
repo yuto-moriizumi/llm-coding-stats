@@ -1,5 +1,12 @@
 {
   "Claude Fable 5.2 (xHigh)": "anthropic/claude-fable-5.2",
+  "Claude Fable 5.2 (Max)": "anthropic/claude-fable-5.2",
+  "Gemini 4 Neon (xHigh)": "google/gemini-4-neon",
+  "Gemini 4 Hydrogen (xHigh)": "google/gemini-4-hydrogen",
+  "GPT-6.2 Astra (Max)": "openai/gpt-6.2-astra",
+  "GPT-6.2 Sol (Max)": "openai/gpt-6.2-sol",
+  "Hy4": "tencent/hy4",
+  "Inkling 2 Mini": "thinkingmachines/inkling-2-mini",
   "Qwen4-Max (xHigh)": "qwen/qwen4-max",
   "Kimi K3.1 Pro (Max)": "moonshotai/kimi-k3.1-pro",
   "GPT-6.1 Terra (Max)": "openai/gpt-6.1-terra",
